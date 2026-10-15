@@ -41,22 +41,24 @@ android {
         ]
 
         ndk {
-            abiFilters 'armeabi', 'armeabi-v7a', 'armeabi-v8a'
+            // 车机为 64 位系统，必须同时打包 arm64-v8a，否则安装时报“该应用未适配64位版本”
+            // 注意 ABI 名必须合法：arm64-v8a（不是 armeabi-v8a），armeabi 已被淘汰
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
 
-        multiDexEnabled true
+        multiDexEnabled = true
     }
 
     buildTypes {
         debug {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
         }
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
         }
     }
     compileOptions {
@@ -78,9 +80,9 @@ android {
         }
     }
     buildFeatures {
-        aidl true
+        aidl = true
     }
-    namespace 'com.baidu.carlifevehicle'
+    namespace = 'com.baidu.carlifevehicle'
     androidResources {
         noCompress 'pcm'
     }
