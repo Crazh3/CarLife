@@ -37,6 +37,7 @@ import com.baidu.carlifevehicle.module.MusicModule
 import com.baidu.carlifevehicle.module.NavModule
 import com.baidu.carlifevehicle.module.PhoneModule
 import com.baidu.carlifevehicle.module.VRModule
+import com.baidu.carlifevehicle.usb.UsbAttachPolicy
 import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CarlifeUtil
 import com.baidu.carlifevehicle.util.CommonParams
@@ -72,6 +73,14 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 「记住授权」开启时，插线（App 未启动也一样）会由 AndroidManifest 里的
+        // UsbAutoLaunchAlias + device_filter(全匹配) 把本界面直接拉起；U 盘/鼠标这类
+        // 非手机设备在这里判掉并立即退出，避免把 CarLife 界面弹到前台。
+        // 必须放在 setContentView 之前，避免白闪。
+        if (UsbAttachPolicy.shouldIgnoreAttach(intent)) {
+            finish()
+            return
+        }
         setContentView(R.layout.activity_main)
         mSurfaceView = findViewById(R.id.video_surface_view)
 

@@ -52,6 +52,20 @@
             android:text="@string/baidu_help"
             android:textColor="@color/cl_text_a4_title"
             android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/main_btn_setting"
+            android:layout_width="84dp"
+            android:layout_height="84dp"
+            android:layout_marginRight="12dp"
+            android:layout_marginTop="12dp"
+            android:layout_toLeftOf="@id/main_btn_help"
+            android:background="@drawable/com_bg_btn_selector"
+            android:gravity="center"
+            android:scaleType="center"
+            android:text="@string/baidu_setting"
+            android:textColor="@color/cl_text_a4_title"
+            android:textSize="24sp" />
     </RelativeLayout>
 
     <RelativeLayout

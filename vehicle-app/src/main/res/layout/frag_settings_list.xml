@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/cl_bg_c_main">
+
+    <include
+        android:id="@+id/common_title_bar"
+        layout="@layout/carlife_common_title_bar_new" />
+
+    <ListView
+        android:id="@+id/settings_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/common_title_bar"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:scrollbars="vertical" />
+
+</RelativeLayout>

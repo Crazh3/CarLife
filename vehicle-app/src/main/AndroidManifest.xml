@@ -39,6 +39,58 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          ===== USB 授权「记住授权」的组件载体（见 util/ConnectTypePrefs）=====
+
+          系统「USB 授权弹窗」里有没有「一律允许（记住）」勾选，取决于本应用是否声明了
+          「USB_DEVICE_ATTACHED + device_filter 且匹配当前插入设备」的组件；插线自动拉起界面
+          也依赖这里的 activity-alias。两个组件由「设置-连接方式-USB-记住授权」运行时启用/禁用：
+            记住授权 = 开 → 组件启用 → 弹窗带勾选，勾一次以后插入不再弹窗，
+                            且插线时（App 未启动）系统会直接拉起 CarlifeActivity；
+            记住授权 = 关 → 组件禁用 → 弹窗无勾选，每次插入都要重新授权，也不会自动拉起。
+
+          **默认（首次安装 / 清数据后）为"不记住授权"**：两个组件都声明 android:enabled="false"，
+          因此首次启动前也是关的；App 启动时由 ConnectTypePrefs.applyRememberGrant 按设置同步，
+          在设置页打开该项后立即生效（无需重启）。
+
+          device_filter 必须全匹配（@xml/device_filter 为 <usb-device />）：CarLife 第一次授权
+          针对的是“手机普通模式设备”（VID 是手机厂商的），只匹配 AOA(0x18D1) 会导致第一次弹窗没有勾选。
+
+          带 device_filter 的 Activity 只能有一个（多个匹配会让系统走“默认应用/选择框”分支，
+          插线就不再自动拉起）；U 盘/鼠标这类非手机设备由 CarlifeActivity 里的 UsbAttachPolicy
+          判掉并立即 finish。
+        -->
+        <receiver
+            android:name=".usb.UsbDeviceMatchReceiver"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </receiver>
+
+        <activity-alias
+            android:name=".UsbAutoLaunchAlias"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity=".CarlifeActivity">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </activity-alias>
+
         <activity
             android:name=".SettingsActivity"
             android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar" />

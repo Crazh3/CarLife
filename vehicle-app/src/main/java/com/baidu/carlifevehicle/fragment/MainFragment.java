@@ -49,6 +49,7 @@ public class MainFragment extends BaseFragment implements OnClickListener {
 
     private Button mRetryBtn = null;
     private TextView mHelpBtn = null;
+    private TextView mSettingBtn = null;
     private ImageButton mExitAppBtn = null;
     private Timer mTimer = null;
     private TimerTask mTimerTask = null;
@@ -115,6 +116,8 @@ public class MainFragment extends BaseFragment implements OnClickListener {
 
         mHelpBtn = (TextView) mContentView.findViewById(R.id.main_btn_help);
         mHelpBtn.setOnClickListener(this);
+        mSettingBtn = (TextView) mContentView.findViewById(R.id.main_btn_setting);
+        mSettingBtn.setOnClickListener(this);
         mExitAppBtn = (ImageButton) mContentView.findViewById(R.id.exit_img_btn);
         mExitAppBtn.setOnClickListener(this);
         if (CommonParams.vehicleChannel.equals(CommonParams.VEHICLE_CHANNEL_EL_AFTER_MARKET)) {
@@ -132,6 +135,7 @@ public class MainFragment extends BaseFragment implements OnClickListener {
 
     private void changeUILayout() {
         mHelpBtn.setVisibility(View.GONE);
+        mSettingBtn.setVisibility(View.GONE);
         mExitAppBtn.setVisibility(View.GONE);
         RelativeLayout.LayoutParams params = null;
 
@@ -197,6 +201,9 @@ public class MainFragment extends BaseFragment implements OnClickListener {
                 break;
             case R.id.main_btn_help:
                 mFragmentManager.showFragment(HelpMainFragment.getInstance());
+                break;
+            case R.id.main_btn_setting:
+                mFragmentManager.showFragment(SettingsListFragment.getInstance());
                 break;
             case R.id.exit_img_btn:
                 if (mActivity != null) {

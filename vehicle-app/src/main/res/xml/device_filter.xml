@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  USB 设备过滤器（**匹配所有 USB 设备**），仅作为"本应用是该设备默认处理者"的声明依据。
+
+  ## 为什么必须是全匹配，而不是只匹配 AOA 设备
+  Android「USB 授权弹窗」里的「一律允许（默认用本应用打开该设备）」勾选，只有当
+  本应用在 AndroidManifest 中声明了 USB_DEVICE_ATTACHED + device_filter，
+  且 device_filter **匹配当前插进来的设备** 时，系统才会显示。
+  参考工程 CarLife-Android-Vehicle 的 AOAAccessoryReceiver 用的就是 <usb-device /> 全匹配，
+  所以它的弹窗"不管勾不勾都有勾选框"。
+
+  而 CarLife 的授权弹窗是分两次出现的（见 SDK UsbAccessoryScanner）：
+    1) 手机以普通模式插入（VID 是手机厂商自己的，如 0x12D1/0x04E8/0x05AC，PID 任意），
+       SDK 先对这个"普通设备"请求授权（未授权前无法做 AOA 切换）；
+    2) 授权通过、AOA 切换成功后，手机重新枚举为 AOA 设备
+       （VID 0x18D1 / PID 0x2D00-0x2D05），SDK 对 AOA 设备再请求一次授权。
+  第 1 次弹窗的设备 VID/PID 是手机厂商的，若过滤器只写 AOA(0x18D1) 就匹配不到，
+  系统便不显示「一律允许」勾选 —— 这就是"弹窗没有勾选"的原因。
+
+  因此这里使用全匹配，保证两次弹窗都能勾选「一律允许」。
+
+  ## 谁来控制"生效/不生效"
+  设置项「连接方式-USB-记住授权」：ConnectTypePrefs.applyRememberGrant 会启用/禁用
+  引用本过滤器的两个组件（UsbAutoLaunchAlias、UsbDeviceMatchReceiver）。
+    - 记住授权 = 开：组件启用 → 全匹配 → 弹窗有「一律允许」→ 勾一次以后插入不再弹窗；
+                     同时插线时系统会把 UsbAutoLaunchAlias 指向的 CarlifeActivity 拉起来
+                     （App 没启动也能拉起，因为启动由系统发起）。
+    - 记住授权 = 关：组件禁用 → 无任何匹配 → 弹窗没有勾选 → 每次插入都要重新授权，
+                     也不会自动拉起 CarLife。
+
+  注意：带本过滤器的 Activity 只能有一个（多个匹配会让系统走"默认应用/选择框"分支，
+  不再自动拉起界面）；U 盘/鼠标这类设备的界面拦截放在 CarlifeActivity 里的 UsbAttachPolicy。
+-->
+<resources>
+    <usb-device />
+</resources>

@@ -10,6 +10,7 @@
     <string name="alert_cancel">取消</string>
     <string name="baidu_logo">\@ 2014 Baidu</string>
     <string name="baidu_help"><u>帮助</u></string>
+    <string name="baidu_setting"><u>设置</u></string>
     <!-- main -END -->
 
 
@@ -60,6 +61,18 @@
     <string name="module_custom_usb_ConnectType">USB连接方式 </string>
     <string name="module_custom_wifi_ConnectType">WIFI连接方式 </string>
     <string name="module_custom_wifi_default_ip">192.168.43.1</string>
+
+    <!-- 设置-连接方式 -START -->
+    <string name="settings_connect_type">连接方式</string>
+    <string name="settings_connect_type_summary">当前：%1$s</string>
+    <string name="connect_type_title">连接方式</string>
+    <string name="connect_type_usb">USB</string>
+    <string name="connect_type_wifi">WIFI</string>
+    <string name="connect_type_direct">直连</string>
+    <string name="connect_type_remember_title">记住授权</string>
+    <string name="connect_type_remember_on">开</string>
+    <string name="connect_type_remember_off">关</string>
+    <!-- 设置-连接方式 -END -->
     <!-- setting -END -->
 
 
