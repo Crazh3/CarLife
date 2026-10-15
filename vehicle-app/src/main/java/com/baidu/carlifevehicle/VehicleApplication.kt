@@ -22,6 +22,8 @@ import com.baidu.carlifevehicle.audio.recorder.VoiceMessageHandler
 import com.baidu.carlifevehicle.protocol.ControllerHandler
 import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CommonParams.CONNECT_TYPE_SHARED_PREFERENCES
+import com.baidu.carlife.sdk.receiver.transport.aoa.UsbAccessoryStarter
+import com.baidu.carlifevehicle.util.ConnectTypePrefs
 import com.baidu.carlifevehicle.util.PreferenceUtil
 
 class VehicleApplication : Application() {
@@ -43,6 +45,14 @@ class VehicleApplication : Application() {
         app = this
 
         PreferenceUtil.getInstance().init(this)
+        // 「记住授权」（设置-连接方式-USB）落到系统组件状态，见 ConnectTypePrefs：
+        // 首次安装默认关闭（不记住授权）；已有配置则沿用上次的值，
+        // 保证进程启动后组件状态与设置一致（覆盖安装/升级后也以设置里的值为准）。
+        ConnectTypePrefs.applyRememberGrant(this, ConnectTypePrefs.isRememberGrant(this))
+        // 进程启动时清掉"已强制 AOA_START_ACCESSORY 重初始化的设备"集合，
+        // 这样本次 App 启动对每个手机都会做一次强制重枚举（修复手机端 CarLife app
+        // 没监听 AOA bulk 端点的问题）。详见 UsbAccessoryStarter.forceReInitDevices。
+        UsbAccessoryStarter.resetForceReInitState()
         resetUsbDeviceIfNecessary()
         CarlifeConfUtil.getInstance().init()
         initReceiver()
