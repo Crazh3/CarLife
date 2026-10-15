@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-@SuppressWarnings("deprecation") // 有意使用 Context 的 MODE_WORLD_* / MODE_MULTI_PROCESS 常量
 public class PreferenceUtil {
 
     private static final String TAG = "PreferenceUtil";

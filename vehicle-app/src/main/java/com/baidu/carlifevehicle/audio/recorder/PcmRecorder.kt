@@ -31,7 +31,7 @@ class PcmRecorder(private var mContext: CarLifeContext?) : Thread() {
                 DEFAULT_BUFFER_SIZE
             )
         }
-        var bufferRead: Int
+        var bufferRead = 0
         val tempBufferBytes = ByteArray(RECORD_DATA_PACKAGE_SIZE)
         var isStoped = false
         while (true) {

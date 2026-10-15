@@ -10,11 +10,13 @@ interface ConnectionChangeListener {
      * 2 ADB六条Socket建立成功
      * 3 Wifi六条Socket建立成功
      */
+    @JvmDefault
     fun onConnectionAttached(context: CarLifeContext) {}
 
     /**
      * 在未detach的前提下，重新进行attach操作，会回调reattach
      */
+    @JvmDefault
     fun onConnectionReattached(context: CarLifeContext) {}
 
     /**
@@ -22,23 +24,27 @@ interface ConnectionChangeListener {
      * 1 USB断开
      * 2 网络断开
      */
+    @JvmDefault
     fun onConnectionDetached(context: CarLifeContext) {}
 
     /**
      * 协议校验成功
      * statistics info 校验成功时
      */
+    @JvmDefault
     fun onConnectionEstablished(context: CarLifeContext) {}
 
     /**
      * 与设备协议版本不兼容
      * ProtocolVersionMatch 校验失败时
      */
+    @JvmDefault
     fun onConnectionVersionNotSupprt(context: CarLifeContext) {}
 
     /**
      * 车机渠道号验证失败
      * CarlifeAuthenResult 校验失败时
      */
+    @JvmDefault
     fun onConnectionAuthenFailed(context: CarLifeContext) {}
 }

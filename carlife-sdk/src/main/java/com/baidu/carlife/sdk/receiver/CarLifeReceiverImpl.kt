@@ -144,8 +144,6 @@ class CarLifeReceiverImpl(
 
     override fun getDisplaySpec() = renderer.displaySpec
 
-    override fun requestVideoReinit() = renderer.requestVideoReinit()
-
     override fun setSurface(surface: Surface?) {
         renderer.setSurface(surface)
     }

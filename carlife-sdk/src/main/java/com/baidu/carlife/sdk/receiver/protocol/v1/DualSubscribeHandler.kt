@@ -39,11 +39,10 @@ class DualSubscribeHandler: TransportListener {
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleHUCarDataSubscribeDone(context: CarLifeContext, message: CarLifeMessage) {
-        val response = CarLifeMessage.obtain(Constants.MSG_CHANNEL_CMD, ServiceTypes.MSG_CMD_CAR_DATA_SUBSCRIBE_RSP)
-        response.payload(context.listSubscribable().proto())
-        context.postMessage(response)
+        var message = CarLifeMessage.obtain(Constants.MSG_CHANNEL_CMD, ServiceTypes.MSG_CMD_CAR_DATA_SUBSCRIBE_RSP)
+        message.payload(context.listSubscribable().proto())
+        context.postMessage(message)
     }
 
     private fun handleMDSubscribeAction(context: CarLifeContext, message: CarLifeMessage, isStart: Boolean) {

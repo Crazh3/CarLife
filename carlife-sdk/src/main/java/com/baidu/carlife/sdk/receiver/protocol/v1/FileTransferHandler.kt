@@ -34,7 +34,6 @@ class FileTransferHandler(context: CarLifeContext,
         return false
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun onTransferBegin(context: CarLifeContext, message: CarLifeMessage) {
         val fileInfo = message.protoPayload as? CarlifeFileTransferBeginProto.CarlifeFileTransferBegin
         fileInfo?.let {
@@ -51,7 +50,6 @@ class FileTransferHandler(context: CarLifeContext,
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun onTransferData(context: CarLifeContext, message: CarLifeMessage) {
         if (isTransferring) {
             // TODO 可能需要创建单独的线程处理文件写入，避免拖慢数据传输
@@ -61,7 +59,6 @@ class FileTransferHandler(context: CarLifeContext,
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun onTransferEnd(context: CarLifeContext, message: CarLifeMessage) {
         if (totalSize == transferredSize) {
             // 进行尺寸校验，如果不对，不回调

@@ -8,7 +8,6 @@ import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
 import com.baidu.carlife.sdk.Constants
 import com.baidu.carlife.sdk.internal.opengl.RenderableTexture
 import com.baidu.carlife.sdk.internal.opengl.grafika.FullFrameRect
@@ -16,6 +15,7 @@ import com.baidu.carlife.sdk.internal.opengl.grafika.Texture2dProgram
 import com.baidu.carlife.sdk.receiver.CarLife
 import com.baidu.carlife.sdk.receiver.OnVideoSizeChangedListener
 import com.baidu.carlife.sdk.util.Logger
+import com.baidu.carlife.sdk.util.ScaleUtils
 import com.baidu.carlife.sdk.util.annotations.DoNotStrip
 import java.lang.ref.WeakReference
 import javax.microedition.khronos.egl.EGLConfig
@@ -110,13 +110,13 @@ class RemoteDisplayGLView @JvmOverloads constructor(context: Context, attrs: Att
 
     override fun onVideoSizeChanged(videoWidth: Int, videoHeight: Int) {
         post {
-            Logger.d(Constants.TAG, "RemoteDisplayGLView onVideoSizeChanged ", videoWidth, " ", videoHeight)
-            // 拉伸铺满：不按视频宽高比缩放 View，直接铺满父容器，消除上下/左右黑边。
-            // 画面比例与屏幕不一致时会有拉伸变形；触控坐标由 RemoteControlManager
-            // 按 surface 尺寸线性换算，铺满后依然正确。
+            val ratio = videoWidth.toFloat() / videoHeight
+            val screenWidth = context.applicationContext.resources.displayMetrics.widthPixels
+            val screenHeight = context.applicationContext.resources.displayMetrics.heightPixels
+            val (destWidth, destHeight) = ScaleUtils.inside(screenWidth, screenHeight, ratio)
             layoutParams = layoutParams.apply {
-                width = ViewGroup.LayoutParams.MATCH_PARENT
-                height = ViewGroup.LayoutParams.MATCH_PARENT
+                width = destWidth
+                height = destHeight
             }
         }
     }

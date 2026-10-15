@@ -1,11 +1,9 @@
 package com.baidu.carlifevehicle.audio
 
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.media.AudioTrack.PLAYSTATE_PLAYING
-import android.os.Build
 import com.baidu.carlife.protobuf.CarlifeMusicInitProto
 import com.baidu.carlife.protobuf.CarlifeTTSInitProto
 import com.baidu.carlife.sdk.CarLifeContext
@@ -58,46 +56,18 @@ class CarLifeStreamSource(
 
     override var tag: Any? = null
 
-    private val mPlayer: AudioTrack = createPlayer()
-
-    private fun createPlayer(): AudioTrack {
-        val minBufferSize = AudioTrack.getMinBufferSize(
+    private val mPlayer: AudioTrack = AudioTrack(
+        AudioManager.STREAM_MUSIC,
+        params.sampleRate,
+        params.channelConfig,
+        AudioFormat.ENCODING_PCM_16BIT,
+        AudioTrack.getMinBufferSize(
             params.sampleRate,
             params.channelConfig,
             params.audioFormat
-        )
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            // API 21+ 推荐使用 AudioTrack.Builder
-            AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(params.sampleRate)
-                        .setChannelMask(params.channelConfig)
-                        .build()
-                )
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .setBufferSizeInBytes(minBufferSize)
-                .build()
-        } else {
-            // API 20- 使用旧构造器（仍然废弃）
-            @Suppress("DEPRECATION")
-            AudioTrack(
-                AudioManager.STREAM_MUSIC,
-                params.sampleRate,
-                params.channelConfig,
-                AudioFormat.ENCODING_PCM_16BIT,
-                minBufferSize,
-                AudioTrack.MODE_STREAM
-            )
-        }
-    }
+        ),
+        AudioTrack.MODE_STREAM
+    )
 
     private var aacAudioDecoder: AACDecoder = AACDecoder(context, params) {
         if (!isClosed) {

@@ -139,7 +139,6 @@ class ConnectionEstablishHandler(private val context: CarLifeContext) : Transpor
         sendAuthRequest(context)
     }
 
-    @Suppress("DEPRECATION") // Build.CPU_ABI2 在 API 21+ 弃用、Build.SERIAL 在 API 26+ 弃用，但车机协议仍要求上报
     private fun sendHuInfo(context: CarLifeContext) {
         val response = CarLifeMessage.obtain(MSG_CHANNEL_CMD, MSG_CMD_HU_INFO)
         response.payload(

@@ -35,7 +35,6 @@ import com.baidu.carlifevehicle.view.DirectionViewPager;
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("deprecation") // 有意使用 PagerAdapter / ViewPager 的废弃回调
 public class NewUserGuideFragment extends BaseFragment {
     static NewUserGuideFragment mNewUserGuideFragment = null;
 

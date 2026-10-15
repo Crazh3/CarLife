@@ -26,7 +26,6 @@ import java.util.Iterator;
  * @author ouyangnengjun
  * 
  */
-@SuppressWarnings("deprecation") // 有意使用无 Looper 参数的 Handler() 构造
 public abstract class MsgBaseHandler extends Handler {
 
     /**

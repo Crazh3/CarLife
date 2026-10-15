@@ -12,7 +12,6 @@ import com.baidu.carlife.sdk.internal.protocol.CarLifeMessage
 import com.baidu.carlife.sdk.internal.protocol.ServiceTypes
 import com.baidu.carlife.sdk.util.Logger
 import com.baidu.carlifevehicle.audio.CarLifeStreamSource
-import com.baidu.carlifevehicle.audio.NavAudioChannelConfig
 import com.baidu.carlifevehicle.audio.player.AudioPlayer
 import com.baidu.carlifevehicle.audio.player.source.AudioSource
 
@@ -81,13 +80,10 @@ class NavModule(private val context: CarLifeContext)
         val payload = message.protoPayload as CarlifeTTSInitProto.CarlifeTTSInit
         source = CarLifeStreamSource.from(context, payload)
         // 播放新内容之前，请求一下焦点, 因为不像音乐有3，1和3，0可以用来切换焦点
-        // 可在设置页关闭（导航音频焦点开关），关闭后不打扰手机端当前音频
-        if (NavAudioChannelConfig.isFocusEnabled(context.applicationContext)) {
-            (context as CarLifeContextImpl).audioFocusManager.requestAudioFocus(
-                this,
-                AudioFocusManager.STREAM_NAVI,
-                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-        }
+        (context as CarLifeContextImpl).audioFocusManager.requestAudioFocus(
+            this,
+            AudioFocusManager.STREAM_NAVI,
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
         player.play(source!!)
     }
 

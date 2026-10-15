@@ -77,8 +77,8 @@ class PcmSender(private var mContext: CarLifeContext?) : Thread() {
         if (data == null || data.isEmpty()) {
             return 0
         }
-        var downSampleBuffer: ByteArray?
-        var ret: Int
+        var downSampleBuffer: ByteArray? = null
+        var ret = 0
         /** 进行降采样16K->8K  */
         if (isDownSample) {
             downSampleBuffer = downSample(data)

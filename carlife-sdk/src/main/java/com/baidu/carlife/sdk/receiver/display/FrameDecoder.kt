@@ -119,7 +119,6 @@ class FrameDecoder(
                 val inputBuffer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     decoder.getInputBuffer(index)
                 } else {
-                    @Suppress("DEPRECATION") // MediaCodec.inputBuffers 在 API 21+ 弃用，用于 API 20- 兼容
                     decoder.inputBuffers[index]
                 }
 

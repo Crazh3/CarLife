@@ -131,7 +131,6 @@ class AudioFocusManager(context: Context) {
             listener.audioFocusRequest = focusRequest
             audioManager.requestAudioFocus(focusRequest)
         } else {
-            @Suppress("DEPRECATION") // AudioManager.requestAudioFocus(listener, streamType, durationHint) 在 API 26+ 弃用，用于 API 25- 兼容
             audioManager.requestAudioFocus(
                 listener,
                 AudioManager.STREAM_MUSIC,
@@ -156,7 +155,6 @@ class AudioFocusManager(context: Context) {
                     return
                 }
             }
-            @Suppress("DEPRECATION") // AudioManager.abandonAudioFocus(listener) 在 API 26+ 弃用，用于 API 25- 兼容
             audioManager.abandonAudioFocus(listener)
         }
         finally {

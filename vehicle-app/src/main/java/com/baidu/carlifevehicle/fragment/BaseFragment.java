@@ -31,7 +31,6 @@ import com.baidu.carlifevehicle.CarlifeActivity;
 /**
  * base fragment
  */
-@SuppressWarnings("deprecation") // 有意使用部分已废弃的 Fragment/View 相关 API
 public class BaseFragment extends Fragment {
 
     private static final String TAG = "BaseFragment";

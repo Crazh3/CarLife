@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 通道网格里的单个通道按钮（背景/文字色由代码按选中态设置，layout_weight 也在代码里设） -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/tv_channel_name"
-    android:layout_width="0dp"
-    android:layout_height="48dp"
-    android:gravity="center"
-    android:maxLines="1"
-    android:textSize="15sp" />

@@ -102,7 +102,7 @@ class AACDecoder(
 
                 inputBuffer.clear()
 
-                val offset = inputBuffer.position()
+                val offset = inputBuffer!!.position()
                 val inputSize = inputBuffer.remaining().coerceAtMost(remaining)
                 inputBuffer.put(frame.body, frame.commandSize + consumed, inputSize)
                 mDecoder.queueInputBuffer(index, offset, inputSize,System.nanoTime() / 1000, 0)

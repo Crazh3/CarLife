@@ -150,7 +150,6 @@ class MessageReader(private val pool: UsbRequestPool) {
         return null
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun verifyHeader(channel: Int, size: Int): Boolean {
         return channel >= Constants.MSG_CHANNEL_CMD
                 && channel <= Constants.MSG_CHANNEL_UPDATE

@@ -14,3 +14,6 @@
 .cxx
 .idea
 .idea/workspace.xml
+
+# 各 module 的构建产物目录（carlife-sdk/build、vehicle-app/build 等）
+build/

@@ -26,11 +26,6 @@ interface CarLifeReceiver: CarLifeContext {
     // 获取视频帧的渲染参数
     fun getDisplaySpec(): DisplaySpec
 
-    // 渲染区尺寸变化后调用：已连接时按最新 displaySpec 重新协商视频尺寸
-    // （重发 MSG_CMD_VIDEO_ENCODER_INIT，手机端回 INIT_DONE 后重建解码器）
-    // @return 是否发起了重协商
-    fun requestVideoReinit(): Boolean
-
     // 创建好SurfaceView之后，调用此方法传递Surface, 用于构建MediaCodec，解码渲染
     // 传递空的话，停止渲染，非空开始渲染，主线程调用
     fun setSurface(surface: Surface?)

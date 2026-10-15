@@ -57,7 +57,6 @@ class TurnByTurnSubscriber(private val context: CarLifeContext): CarLifeSubscrib
     }
 
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleCarlifeDataSubscribeInfo(context: CarLifeContext, message: CarLifeMessage) {
         var response = message.protoPayload as? CarlifeNaviNextTurnInfoProto.CarlifeNaviNextTurnInfo
 

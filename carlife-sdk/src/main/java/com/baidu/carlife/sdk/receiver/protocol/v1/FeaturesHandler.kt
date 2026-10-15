@@ -59,7 +59,6 @@ class FeaturesHandler(private val encryptionTool: EncryptionTool?,
     }
 
     // 以下方法与传输协议的加解密有关系
-    @Suppress("UNUSED_PARAMETER")
     private fun handleRequestPublicKey(context: CarLifeContext, message: CarLifeMessage) {
         if (encryptionTool == null || publicKey == null) {
             Logger.e(Constants.TAG, "can not request public key when CONTENT_ENCRYPTION not enabled")
@@ -94,7 +93,6 @@ class FeaturesHandler(private val encryptionTool: EncryptionTool?,
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleEncryptReady(context: CarLifeContext, message: CarLifeMessage) {
         context.postMessage(MSG_CHANNEL_CMD, MSG_CMD_MD_ENCRYPT_READY_DONE)
         if (encryptionTool != null && publicKey != null) {
@@ -102,14 +100,12 @@ class FeaturesHandler(private val encryptionTool: EncryptionTool?,
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleCarlifeDataRequest(context: CarLifeContext, message: CarLifeMessage) {
-        val response = CarLifeMessage.obtain(MSG_CHANNEL_CMD, MSG_CMD_CARLIFE_DATA_SUBSCRIBE)
-        response.payload(context.listSubscriber().proto())
-        context.postMessage(response)
+        var message = CarLifeMessage.obtain(MSG_CHANNEL_CMD, MSG_CMD_CARLIFE_DATA_SUBSCRIBE)
+        message.payload(context.listSubscriber().proto())
+        context.postMessage(message)
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleMDCarlifeDataSubscribeDone(context: CarLifeContext, message: CarLifeMessage) {
         context.postMessage(MSG_CHANNEL_CMD, MSG_CMD_HU_CARLIFE_DATA_SUBSCRIBE_DONE_RESPONSE)
     }

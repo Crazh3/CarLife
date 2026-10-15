@@ -19,6 +19,7 @@ interface TransportListener: ConnectionChangeListener {
      *
      * 特别提醒：此方法不能进行耗时操作，否则影响消息分发
      */
+    @JvmDefault
     fun onSendMessage(context: CarLifeContext, message: CarLifeMessage): Boolean {
         return false
     }
@@ -30,6 +31,7 @@ interface TransportListener: ConnectionChangeListener {
      *
      * 特别提醒：此方法不能进行耗时操作，否则影响消息分发
      */
+    @JvmDefault
     fun onReceiveMessage(context: CarLifeContext, message: CarLifeMessage): Boolean {
         return false
     }

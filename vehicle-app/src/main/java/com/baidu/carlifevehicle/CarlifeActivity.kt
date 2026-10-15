@@ -20,7 +20,6 @@ import com.baidu.carlife.protobuf.CarlifeConnectExceptionProto.CarlifeConnectExc
 import com.baidu.carlife.sdk.*
 import com.baidu.carlife.sdk.Constants.TAG
 import com.baidu.carlife.sdk.Constants.VALUE_PROGRESS_100
-import com.baidu.carlife.sdk.internal.DisplaySpec
 import com.baidu.carlife.sdk.internal.protocol.CarLifeMessage
 import com.baidu.carlife.sdk.internal.protocol.ServiceTypes
 import com.baidu.carlife.sdk.internal.transport.TransportListener
@@ -38,15 +37,10 @@ import com.baidu.carlifevehicle.module.MusicModule
 import com.baidu.carlifevehicle.module.NavModule
 import com.baidu.carlifevehicle.module.PhoneModule
 import com.baidu.carlifevehicle.module.VRModule
-import com.baidu.carlifevehicle.usb.UsbAttachPolicy
 import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CarlifeUtil
 import com.baidu.carlifevehicle.util.CommonParams
-import com.baidu.carlifevehicle.util.DisplayModeConfig
-import com.baidu.carlifevehicle.util.DisplaySpecConfig
-import com.baidu.carlifevehicle.util.DisplaySpecLogger
 import com.baidu.carlifevehicle.util.PreferenceUtil
-import com.baidu.carlifevehicle.util.UsbPermissionRechecker
 import com.baidu.carlifevehicle.view.CarlifeMessageDialog
 import com.permissionx.guolindev.PermissionX
 
@@ -78,74 +72,8 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // 本 Activity 也是 USB 接入的匹配目标（见 AndroidManifest 的 UsbAutoLaunchAlias +
-        // device_filter 全匹配），这样 App 没启动时插线也能被系统直接拉起（系统发起的启动，
-        // 不受 Android 10+ 后台启动限制）。全匹配是为了让"手机普通模式设备"那次授权弹窗
-        // 也有「一律允许」勾选，副作用是 U 盘/鼠标也会命中，所以这里先判掉并立即退出，
-        // 避免把 CarLife 界面弹到前台。必须放在 setContentView 之前，避免白闪。
-        if (UsbAttachPolicy.shouldIgnoreAttach(intent)) {
-            finish()
-            return
-        }
-        // 应用显示模式（系统默认/沉浸式全屏，用户在设置页选择）
-        DisplayModeConfig.apply(this)
         setContentView(R.layout.activity_main)
         mSurfaceView = findViewById(R.id.video_surface_view)
-
-        // ============================================================
-        // 诊断日志：分辨率协商全流程
-        // ============================================================
-        // 1) 车机物理屏 + application window
-        DisplaySpecLogger.logPhysicalScreen(this, "CarlifeActivity.onCreate")
-        DisplaySpecLogger.logAppWindow(this, "CarlifeActivity.onCreate")
-        DisplaySpecLogger.logGlviewSize(mSurfaceView, "CarlifeActivity.onCreate(before-layout)")
-
-        // 2) 先下发 fallback（整屏物理像素），防止连接在 GLView 拿到真实尺寸前就建立
-        // 导致手机端没收到编码参数；真正精准的尺寸在下面 onLayout 里按 GLView 实测值覆盖。
-        try {
-            applyDisplaySpec(
-                DisplaySpecConfig.buildFallback(this),
-                "CarlifeActivity.onCreate",
-                "fallback"
-            )
-        } catch (e: Exception) {
-            Logger.w(TAG, "setDisplaySpec(fallback) failed: ", e)
-        }
-
-        // 3) 监听 GLView 尺寸变化：首帧 layout、运行期切换显示模式（系统栏显隐）、
-        // 窗口尺寸变化都会走到这里。每次都把"渲染区物理像素"作为下发给手机端的目标尺寸，
-        // 尺寸真的变了才下发（见 applyDisplaySpec），并触发一次视频尺寸重新协商。
-        mSurfaceView.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            val w = v.width
-            val h = v.height
-            if (w <= 0 || h <= 0) return@addOnLayoutChangeListener
-            DisplaySpecLogger.logGlviewSize(v, "CarlifeActivity.onLayout")
-            try {
-                applyDisplaySpec(
-                    DisplaySpecConfig.build(w, h, this),
-                    "CarlifeActivity.onLayout",
-                    "glview-actual"
-                )
-            } catch (e: Exception) {
-                Logger.w(TAG, "setDisplaySpec(glview) failed: ", e)
-            }
-        }
-
-        // 4) 监听手机端最终回传的编码尺寸（MSG_CMD_VIDEO_ENCODER_INIT_DONE），
-        // 与我们下发的尺寸对比就能直接看出手机端是否按我们下发的尺寸编码。
-        // 这是判断"模糊"的根因——比例不一致 = 拉伸。
-        CarLife.receiver().addOnVideoSizeChangedListener { width, height ->
-            DisplaySpecLogger.logPhoneEncodedSize(width, height, "phoneEncoderInitDone")
-            val ratio = if (height > 0) width.toFloat() / height else 0f
-            val target = CarLife.receiver().getDisplaySpec()
-            val targetRatio = if (target.height > 0) target.width.toFloat() / target.height else 0f
-            val diff = kotlin.math.abs(ratio - targetRatio)
-            Logger.w(
-                TAG,
-                "[phoneEncoderInitDone] ratio=$ratio targetRatio=$targetRatio diff=$diff " +
-                        "${if (diff < 0.02f) "OK_MATCH" else "MISMATCH_STRETCH"}"
-            )
-        }
 
         mRootView = findViewById(R.id.root_view)
 
@@ -192,36 +120,6 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
         return mCarLifeFragmentManager
     }
 
-    /**
-     * 把渲染区尺寸下发给手机端（[DisplaySpecConfig] 已按比例 + H.264 16 对齐算好）。
-     *
-     * 与 SDK 里当前保存的 displaySpec 比较：
-     * - 尺寸一致 → 什么都不做，避免每次 layout 都重复下发、重复协商；
-     * - 尺寸变了 → 覆盖 displaySpec，并让 SDK 在"已连接"时按新尺寸重新协商视频
-     *   （重发 MSG_CMD_VIDEO_ENCODER_INIT，见 RemoteDisplayRenderer.requestVideoReinit）；
-     *   未连接时不用重协商 —— 连接建立时会用最新的 displaySpec 发 INIT。
-     *
-     * 这样运行期切换「系统默认 / 沉浸式全屏」（系统栏显隐导致渲染区尺寸变化）后，
-     * 手机端会立即按新尺寸重新编码，不再停留在旧尺寸上，也不需要重启 App。
-     */
-    private fun applyDisplaySpec(spec: DisplaySpec, scene: String, source: String) {
-        val current = CarLife.receiver().getDisplaySpec()
-        if (current.width == spec.width
-            && current.height == spec.height
-            && current.frameRate == spec.frameRate
-        ) {
-            Logger.d(TAG, "applyDisplaySpec skip, unchanged ${spec.width}x${spec.height}")
-            return
-        }
-        CarLife.receiver().setDisplaySpec(spec)
-        DisplaySpecLogger.logDisplaySpec(spec, scene, source)
-        val reinit = CarLife.receiver().requestVideoReinit()
-        Logger.d(
-            TAG,
-            "applyDisplaySpec ${spec.width}x${spec.height} source=$source videoReinit=$reinit"
-        )
-    }
-
     private fun requestPermission() {
         PermissionX.init(this)
             .permissions(
@@ -237,7 +135,7 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
                     "取消"
                 )
             }
-            .request { allGranted, _, deniedList ->
+            .request { allGranted, grantedList, deniedList ->
                 if (!allGranted) {
                     Toast.makeText(
                         this,
@@ -253,7 +151,7 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
 
         val result = ContextCompat.checkSelfPermission(this@CarlifeActivity, permissionString!!)
         Logger.e(Constants.TAG, "requestPermission>>>", result)
-        var hasPermisson: Boolean
+        var hasPermisson = false
         hasPermisson = if (result == PackageManager.PERMISSION_GRANTED) { // 没有获得权限
             true
         } else {
@@ -297,29 +195,6 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
         super.onStart()
         VoiceManager.onActivityStart()
         CarLife.receiver().onActivityStarted()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // 主动重发未授权 AOA 设备的系统授权弹窗。
-        // Android 系统在用户"拒绝"USB 授权时**不发送任何广播**，
-        // SDK 内部 UsbAccessoryScanner 在 pendingPermissionDevices.poll() 后
-        // 永远等不到回调，导致下次弹窗只能等 USB 重新插拔（ACTION_USB_DEVICE_ATTACHED）。
-        // 这里在 Activity 回到前台时主动扫描未授权设备并重发弹窗，
-        // 让"再次弹窗"延迟从"拔插 USB"缩短到"用户回到 Activity"。
-        try {
-            UsbPermissionRechecker.recheckAoaDevices(this)
-        } catch (e: Exception) {
-            Logger.w(TAG, "onResume recheckAoaDevices failed: ", e)
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // 沉浸式模式下系统栏被临时呼出后，重新进入沉浸
-        if (hasFocus) {
-            DisplayModeConfig.apply(this)
-        }
     }
 
     override fun onStop() {

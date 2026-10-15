@@ -42,7 +42,6 @@ class UsbRequestPool {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             request.queue(ByteBuffer.wrap(buffer, offset, length))
         } else {
-            @Suppress("DEPRECATION") // UsbRequest.queue(ByteBuffer, int) 在 API 26+ 弃用，用于 API 25- 兼容
             request.queue(ByteBuffer.wrap(buffer, offset, length), length)
         }
     }
@@ -51,7 +50,6 @@ class UsbRequestPool {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             request.queue(buffer)
         } else {
-            @Suppress("DEPRECATION") // UsbRequest.queue(ByteBuffer, int) 在 API 26+ 弃用，用于 API 25- 兼容
             request.queue(buffer, length)
         }
     }

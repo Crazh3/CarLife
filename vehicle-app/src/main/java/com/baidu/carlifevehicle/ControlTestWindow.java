@@ -59,7 +59,6 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-@SuppressWarnings("deprecation") // 有意使用 Environment.getExternalStorageDirectory()
 public class ControlTestWindow implements OnClickListener {
 
     public static final String TAG = "ControlTestWindow";

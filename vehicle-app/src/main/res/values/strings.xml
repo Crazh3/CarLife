@@ -10,42 +10,6 @@
     <string name="alert_cancel">取消</string>
     <string name="baidu_logo">\@ 2014 Baidu</string>
     <string name="baidu_help"><u>帮助</u></string>
-    <string name="baidu_settings"><u>设置</u></string>
-    <string name="title_activity_settings">设置</string>
-    <string name="settings_display_mode">显示模式</string>
-    <string name="settings_display_mode_summary">当前：%1$s</string>
-    <string name="settings_display_mode_system">系统默认</string>
-    <string name="settings_display_mode_immersive">沉浸式全屏</string>
-
-    <!-- 连接方式 -->
-    <string name="settings_connect_type">连接方式</string>
-    <string name="settings_connect_type_summary">当前：%1$s</string>
-    <string name="connect_type_title">连接方式</string>
-    <string name="connect_type_usb">USB</string>
-    <string name="connect_type_wifi">WIFI</string>
-    <string name="connect_type_direct">直连</string>
-    <string name="connect_type_remember_title">记住授权</string>
-    <string name="connect_type_remember_on">开</string>
-    <string name="connect_type_remember_off">关</string>
-
-    <!-- 声音传输通道 -->
-    <string name="settings_audio_transmission">声音传输通道</string>
-    <string name="audio_transmission_title">声音传输通道</string>
-    <string name="audio_transmission_interconnect">互联</string>
-    <string name="audio_transmission_bluetooth">蓝牙</string>
-
-    <!-- 媒体 / 导航声音通道（仅"声音传输通道=互联"时显示） -->
-    <string name="settings_media_channel">媒体声音通道</string>
-    <string name="settings_navi_channel">导航声音通道</string>
-    <string name="media_channel_title">媒体声音通道</string>
-    <string name="navi_channel_title">导航声音通道</string>
-    <string name="channel_version">版本</string>
-    <string name="channel_version_new">新版</string>
-    <string name="channel_version_old">旧版</string>
-    <string name="channel_legacy_hint">旧版：AudioTrack 声道类型 streamType，数字 0~19（10 以上为厂商自定义通道）</string>
-    <string name="channel_new_hint">新版：AudioAttributes 用途 usage，数字 0~19</string>
-    <string name="nav_audio_focus_title">导航音频焦点</string>
-    <string name="nav_audio_focus_sub">播放时请求音频焦点</string>
     <!-- main -END -->
 
 

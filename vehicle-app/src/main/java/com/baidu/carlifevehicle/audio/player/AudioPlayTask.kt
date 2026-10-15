@@ -14,8 +14,6 @@ import com.baidu.carlife.sdk.Constants.MSG_CHANNEL_AUDIO
 import com.baidu.carlife.sdk.Constants.MSG_CHANNEL_AUDIO_TTS
 import com.baidu.carlife.sdk.Constants.MSG_CHANNEL_AUDIO_VR
 import com.baidu.carlife.sdk.internal.audio.AudioFocusManager
-import com.baidu.carlifevehicle.audio.MediaAudioChannelConfig
-import com.baidu.carlifevehicle.audio.NavAudioChannelConfig
 import com.baidu.carlifevehicle.audio.player.source.AudioParams
 import com.baidu.carlifevehicle.audio.player.source.AudioSource
 import com.baidu.carlifevehicle.audio.player.source.ResizableArray
@@ -229,7 +227,6 @@ class AudioPlayTask(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             audioTrack?.setVolume(gain)
         } else {
-            @Suppress("DEPRECATION") // AudioTrack.setStereoVolume 在 API 21+ 弃用，用于 API 20- 兼容
             audioTrack?.setStereoVolume(gain, gain)
         }
     }
@@ -317,7 +314,7 @@ class AudioPlayTask(
     private fun staticPlay(params: AudioParams, source: AudioSource) {
         val buffer = ResizableArray(params.totalBytes)
         try {
-            source.drainTo(buffer, 3000L)
+            val readSize = source.drainTo(buffer, 3000L)
             audioTrack = createAudioTrack(params, AudioTrack.MODE_STATIC)
             audioTrack?.write(buffer.array, 0, buffer.size)
             audioTrack?.play()
@@ -470,16 +467,9 @@ class AudioPlayTask(
                 params.audioFormat
             )
 
-        // 导航/媒体声音通道：用户在设置页可选"旧版 streamType"（走旧构造器）
-        // 或"新版 usage"（走 Builder），见 NavAudioChannelConfig / MediaAudioChannelConfig。
-        val legacyStreamType = legacyStreamTypeForChannel()
-
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || legacyStreamType >= 0) {
-            val streamType =
-                if (legacyStreamType >= 0) legacyStreamType else AudioManager.STREAM_MUSIC
-            @Suppress("DEPRECATION") // AudioTrack(streamType,...) 旧构造器在 API 23+ 弃用；此处用于"旧版通道"
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             AudioTrack(
-                streamType,
+                AudioManager.STREAM_MUSIC,
                 params.sampleRate,
                 params.channelConfig,
                 params.audioFormat,
@@ -507,28 +497,9 @@ class AudioPlayTask(
         }
     }
 
-    /**
-     * 通道配置为"旧版"（AudioTrack streamType）时返回其 streamType；
-     * "新版"（AudioAttributes usage）或非媒体/导航通道返回 -1。
-     */
-    private fun legacyStreamTypeForChannel(): Int {
-        val app = context.applicationContext
-        return when (channel) {
-            MSG_CHANNEL_AUDIO_TTS ->
-                if (NavAudioChannelConfig.getMode(app) == NavAudioChannelConfig.MODE_LEGACY)
-                    NavAudioChannelConfig.getValue(app) else -1
-            MSG_CHANNEL_AUDIO ->
-                if (MediaAudioChannelConfig.getMode(app) == MediaAudioChannelConfig.MODE_LEGACY)
-                    MediaAudioChannelConfig.getValue(app) else -1
-            else -> -1
-        }
-    }
-
     private fun getUsage() = when (channel) {
-        MSG_CHANNEL_AUDIO_VR -> USAGE_MEDIA
-        // 媒体 / 导航通道：使用设置页配置的 usage（默认 USAGE_MEDIA / USAGE_ASSISTANCE_NAVIGATION_GUIDANCE）
-        MSG_CHANNEL_AUDIO -> MediaAudioChannelConfig.getValue(context.applicationContext)
-        MSG_CHANNEL_AUDIO_TTS -> NavAudioChannelConfig.getValue(context.applicationContext)
+        MSG_CHANNEL_AUDIO_VR, MSG_CHANNEL_AUDIO -> USAGE_MEDIA
+        MSG_CHANNEL_AUDIO_TTS -> USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
         else -> USAGE_MEDIA
     }
 }

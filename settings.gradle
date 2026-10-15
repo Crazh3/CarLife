@@ -1,4 +1,7 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.10.0'
+}
 include ':vehicle-app'
 include ':carlife-sdk'
-rootProject.name = "CarLife-Android-Vehicle-V2.0"
+rootProject.name = "CarLife"
 

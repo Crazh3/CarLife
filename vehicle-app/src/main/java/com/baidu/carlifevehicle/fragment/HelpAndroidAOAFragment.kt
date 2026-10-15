@@ -28,7 +28,6 @@ import com.baidu.carlife.sdk.CarLifeContext
 import com.baidu.carlife.sdk.receiver.CarLife
 import com.baidu.carlife.sdk.util.Logger.Companion.d
 import com.baidu.carlifevehicle.R
-import com.baidu.carlifevehicle.databinding.FragHelpAndroidBinding
 import com.baidu.carlifevehicle.util.CommonParams
 import com.baidu.carlifevehicle.util.PreferenceUtil
 import com.permissionx.guolindev.PermissionX
@@ -38,9 +37,8 @@ class HelpAndroidAOAFragment : BaseFragment() {
     private var mTitle: TextView? = null
     private var mAndroid: TextView? = null
     private var mAndroidLayout: View? = null
+    private var mConnectType: RadioGroup? = null
 
-    private var _binding: FragHelpAndroidBinding? = null
-    private val binding get() = _binding!!
 
     companion object {
         private const val TAG = "HelpAndroidAOAFragment"
@@ -63,28 +61,27 @@ class HelpAndroidAOAFragment : BaseFragment() {
     ): View? {
         super.onCreateView(inflater, container, savedInstanceState)
         d(TAG, "onCreateView")
-        _binding = FragHelpAndroidBinding.inflate(inflater, container, false)
-        mContentView = binding.root
-        mBackBtn = binding.commonTitleBar.ibLeft
+        mContentView = LayoutInflater.from(mActivity)
+            .inflate(R.layout.frag_help_android, null) as ViewGroup
+        mBackBtn = mContentView.findViewById<View>(R.id.ib_left) as ImageButton
         mBackBtn!!.setOnClickListener { onBackPressed() }
-        mTitle = binding.commonTitleBar.tvTitle
+        mTitle = mContentView.findViewById<View>(R.id.tv_title) as TextView
         mTitle!!.text = getString(R.string.help_android_aoa_title)
-        mAndroid = binding.androidDevice
+        mAndroid = mContentView.findViewById<View>(R.id.android_device) as TextView
         mAndroid!!.text = getString(R.string.help_android_aoa_device)
-        mAndroidLayout = binding.gotoAndroidLayout
+        mAndroidLayout = mContentView.findViewById(R.id.goto_android_layout)
         mAndroidLayout!!.setOnClickListener(View.OnClickListener {
             mFragmentManager.showFragment(
                 AuthorizationRequestHelpFragment.getInstance()
             )
         })
+        mConnectType = mContentView.findViewById(R.id._connect_type)
         return mContentView
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // NOTE: ViewBinding 对 "_" 开头 id 生成的字段名不直观，此处沿用 findViewById
-        val connectType = binding.root.findViewById<RadioGroup>(R.id._connect_type)
-        connectType.check(
+        mConnectType?.check(
             when (CarLife.receiver().connectionType) {
                 CarLifeContext.CONNECTION_TYPE_AOA -> R.id._usb
                 CarLifeContext.CONNECTION_TYPE_HOTSPOT -> R.id._wifi
@@ -92,7 +89,7 @@ class HelpAndroidAOAFragment : BaseFragment() {
                 else -> R.id._usb
             }
         )
-        connectType.setOnCheckedChangeListener { _, checkedId ->
+        mConnectType?.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id._usb -> {
                     CarLife.receiver().setConnectType(CarLifeContext.CONNECTION_TYPE_AOA)
@@ -125,7 +122,7 @@ class HelpAndroidAOAFragment : BaseFragment() {
                                 "取消"
                             )
                         }
-                        .request { allGranted, _, deniedList ->
+                        .request { allGranted, grantedList, deniedList ->
                             if (!allGranted) {
                                 Toast.makeText(
                                     requireContext(),
@@ -150,7 +147,6 @@ class HelpAndroidAOAFragment : BaseFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         d(TAG, "onDestroyView")
-        _binding = null
     }
 
     override fun onBackPressed(): Boolean {

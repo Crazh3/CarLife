@@ -40,20 +40,18 @@ class VehicleControlHandler: TransportListener {
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun setVehicleControl(context: CarLifeContext, message: CarLifeMessage) {
         Logger.d(TAG, "根据消息执行相关命令操作");
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun sendVehicleDataInfo(context: CarLifeContext, message: CarLifeMessage) {
         Logger.d(TAG, "给手机端发送消息");
         context.postDelayed(100) {
-            val response = CarLifeMessage.obtain(
+            val message = CarLifeMessage.obtain(
                 Constants.MSG_CHANNEL_CMD,
                 ServiceTypes.MSG_CMD_VEHICLE_CONTROL_INFO, 0)
 
-            response.payload(CarlifeVehicleDataListProto.CarlifeVehicleDataList.newBuilder()
+            message.payload(CarlifeVehicleDataListProto.CarlifeVehicleDataList.newBuilder()
                 .setSupport(true)
                 .setTokenString(TAG)
                 .addVehicleData(CarlifeVehicleDataProto.CarlifeVehicleData.newBuilder()
@@ -63,7 +61,7 @@ class VehicleControlHandler: TransportListener {
                     setSupport(true)
                     .build())
                 .build())
-            context.postMessage(response)
+            context.postMessage(message)
         }
     }
 }

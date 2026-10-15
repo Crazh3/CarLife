@@ -33,18 +33,14 @@ import com.baidu.carlife.sdk.receiver.CarLife;
 import com.baidu.carlife.sdk.util.Logger;
 import com.baidu.carlife.sdk.util.TimerUtils;
 import com.baidu.carlifevehicle.R;
-import com.baidu.carlifevehicle.SettingsActivity;
 import com.baidu.carlifevehicle.message.MsgBaseHandler;
 import com.baidu.carlifevehicle.message.MsgHandlerCenter;
 import com.baidu.carlifevehicle.util.CommonParams;
 import com.baidu.carlifevehicle.view.LoadingProgressBar;
 
-import android.content.Intent;
-
 import java.util.Timer;
 import java.util.TimerTask;
 
-@SuppressWarnings("deprecation") // 有意使用 Resources.getDrawable(int)
 public class MainFragment extends BaseFragment implements OnClickListener {
     private static final String TAG = "MainFragment";
     private ImageView mImgView = null;
@@ -53,7 +49,6 @@ public class MainFragment extends BaseFragment implements OnClickListener {
 
     private Button mRetryBtn = null;
     private TextView mHelpBtn = null;
-    private TextView mSettingsBtn = null;
     private ImageButton mExitAppBtn = null;
     private Timer mTimer = null;
     private TimerTask mTimerTask = null;
@@ -120,8 +115,6 @@ public class MainFragment extends BaseFragment implements OnClickListener {
 
         mHelpBtn = (TextView) mContentView.findViewById(R.id.main_btn_help);
         mHelpBtn.setOnClickListener(this);
-        mSettingsBtn = (TextView) mContentView.findViewById(R.id.main_btn_settings);
-        mSettingsBtn.setOnClickListener(this);
         mExitAppBtn = (ImageButton) mContentView.findViewById(R.id.exit_img_btn);
         mExitAppBtn.setOnClickListener(this);
         if (CommonParams.vehicleChannel.equals(CommonParams.VEHICLE_CHANNEL_EL_AFTER_MARKET)) {
@@ -139,7 +132,6 @@ public class MainFragment extends BaseFragment implements OnClickListener {
 
     private void changeUILayout() {
         mHelpBtn.setVisibility(View.GONE);
-        mSettingsBtn.setVisibility(View.GONE);
         mExitAppBtn.setVisibility(View.GONE);
         RelativeLayout.LayoutParams params = null;
 
@@ -205,12 +197,6 @@ public class MainFragment extends BaseFragment implements OnClickListener {
                 break;
             case R.id.main_btn_help:
                 mFragmentManager.showFragment(HelpMainFragment.getInstance());
-                break;
-            case R.id.main_btn_settings:
-                if (mActivity != null) {
-                    Logger.d(TAG, "click settings, start SettingsActivity");
-                    mActivity.startActivity(new Intent(mActivity, SettingsActivity.class));
-                }
                 break;
             case R.id.exit_img_btn:
                 if (mActivity != null) {

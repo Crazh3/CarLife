@@ -49,7 +49,7 @@ class WirlessAPProtocolTransport(
             mWIFIConnectThread!!.stopConnect()
         }
         mWIFIConnectThread = null
-        mWirlessConnector.terminate()
+        mWirlessConnector?.terminate()
         if (mSocket != null) {
             mSocket!!.close()
         }
@@ -60,11 +60,11 @@ class WirlessAPProtocolTransport(
     }
 
     override fun write(message: CarLifeMessage) {
-        mWirlessConnector.write(message)
+        mWirlessConnector!!.write(message)
     }
 
     override fun read(): CarLifeMessage {
-        return mWirlessConnector.read()
+        return mWirlessConnector!!.read()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -77,7 +77,7 @@ class WirlessAPProtocolTransport(
      * @return
      */
     private val isConnecting: Boolean
-        get() = mCarLifeContext.connectionState != CarLifeContext.CONNECTION_DETACHED
+        private get() = mCarLifeContext.connectionState != CarLifeContext.CONNECTION_DETACHED
 
     private inner class WifiConnectThread : Thread() {
         private var isRunning = true
@@ -95,7 +95,7 @@ class WirlessAPProtocolTransport(
                                 Constants.TAG, "connect  packet:" +
                                         serverIPAddress.hostAddress
                             )
-                            if (mWirlessConnector.startConnect(serverIPAddress.hostAddress)) {
+                            if (mWirlessConnector!!.startConnect(serverIPAddress.hostAddress)) {
                                 d(Constants.TAG, "wifi onConnectionAttached")
                                 onConnectionAttached()
                             }

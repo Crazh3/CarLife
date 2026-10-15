@@ -236,6 +236,7 @@ interface CarLifeContext: TransportListener, ModuleStateChangeListener, WirlessS
      * 与设备建立连接
      * @CallSuper
      */
+    @JvmDefault
     fun onConnectionAttached() {
         onConnectionAttached(this)
     }
@@ -244,6 +245,7 @@ interface CarLifeContext: TransportListener, ModuleStateChangeListener, WirlessS
      *  与设备断开连接
      *  @CallSuper
      */
+    @JvmDefault
     fun onConnectionDetached() {
         onConnectionDetached(this)
     }
@@ -252,6 +254,7 @@ interface CarLifeContext: TransportListener, ModuleStateChangeListener, WirlessS
      * 与设备经过握手
      * @CallSuper
      */
+    @JvmDefault
     fun onConnectionEstablished() {
         onConnectionEstablished(this)
     }
@@ -260,6 +263,7 @@ interface CarLifeContext: TransportListener, ModuleStateChangeListener, WirlessS
      *  与设备协议版本不兼容
      *  @CallSuper
      */
+    @JvmDefault
     fun onConnectionVersionNotSupprt() {
         onConnectionVersionNotSupprt(this)
     }
@@ -268,6 +272,7 @@ interface CarLifeContext: TransportListener, ModuleStateChangeListener, WirlessS
      *  车机渠道号验证失败
      *  @CallSuper
      */
+    @JvmDefault
     fun onConnectionAuthenFailed() {
         onConnectionAuthenFailed(this)
     }

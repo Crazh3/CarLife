@@ -39,7 +39,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 
-@SuppressWarnings("deprecation") // 有意使用 PackageInfo.versionCode 等废弃 API
 public class CarlifeUtil {
 
     private static final String TAG = "CarlifeUtil";

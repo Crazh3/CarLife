@@ -105,7 +105,6 @@ class InstantConnectionSetup(private val context: CarLifeContext,
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleWirelessInfoRequest(communicator: BluetoothCommunicator, message: CarLifeMessage) {
         Logger.d(Constants.BLUETOOH_TAG, "handleWirelessInfoRequest: MSG_WIRELESS_INFO_RESPONSE")
         val response = CarLifeMessage.obtain(MSG_CHANNEL_CMD, MSG_WIRELESS_INFO_RESPONSE)
@@ -117,7 +116,6 @@ class InstantConnectionSetup(private val context: CarLifeContext,
         communicator.write(response)
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleTargetInfoRequest(communicator: BluetoothCommunicator, message: CarLifeMessage) {
         Logger.d(Constants.BLUETOOH_TAG, "handleTargetInfoRequest: MSG_WIRELESS_TARGET_INFO_RESPONSE")
         wifiDirectName ?: return
@@ -159,7 +157,6 @@ class InstantConnectionSetup(private val context: CarLifeContext,
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleResponseWirlessStatus(communicator: BluetoothCommunicator, message: CarLifeMessage) {
         Logger.d(Constants.BLUETOOH_TAG, "handleResponseWirlessStatus")
         val wirelessInfo = message.protoPayload as CarlifeWirlessStatusProto.CarlifeWirlessStatus

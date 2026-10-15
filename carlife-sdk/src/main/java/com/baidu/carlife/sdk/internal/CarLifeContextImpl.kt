@@ -128,21 +128,13 @@ abstract class CarLifeContextImpl(private val context: Context, configs: Map<Str
     }
 
     override val versionName: String get() {
-        @Suppress("DEPRECATION") // 迁移计划：compileSdkVersion 升级到 33 后改用 PackageInfoFlags.of(0)
-        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0);
         return packageInfo.versionName
     }
 
     override val versionCode: Int get() {
-        @Suppress("DEPRECATION") // 迁移计划：compileSdkVersion 升级到 33 后改用 PackageInfoFlags.of(0)
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-        // API 28+ 推荐使用 longVersionCode
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageInfo.longVersionCode.toInt()
-        } else {
-            @Suppress("DEPRECATION") // PackageInfo.versionCode 在 API 28+ 弃用
-            packageInfo.versionCode
-        }
+        return packageInfo.versionCode
     }
 
     override val sharedPreferences: SharedPreferences by lazy {

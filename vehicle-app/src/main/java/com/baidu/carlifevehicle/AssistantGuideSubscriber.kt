@@ -59,7 +59,6 @@ class AssistantGuideSubscriber(private val context: CarLifeContext) : CarLifeSub
     }
 
 
-    @Suppress("UNUSED_PARAMETER")
     private fun handleCarlifeDataSubscribeInfo(context: CarLifeContext, message: CarLifeMessage) {
         var response = message.protoPayload as? CarlifeNaviAssitantGuideInfoProto.CarlifeNaviAssitantGuideInfo
         //开始处理移动设备Carlife发送过来的电子狗信息

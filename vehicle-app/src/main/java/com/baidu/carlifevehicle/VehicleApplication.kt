@@ -16,13 +16,12 @@ import com.baidu.carlife.sdk.Configs.*
 import com.baidu.carlife.sdk.Constants
 import com.baidu.carlife.sdk.Constants.TAG
 import com.baidu.carlife.sdk.receiver.CarLife
+import com.baidu.carlife.sdk.internal.DisplaySpec
 import com.baidu.carlifevehicle.audio.recorder.VoiceManager
 import com.baidu.carlifevehicle.audio.recorder.VoiceMessageHandler
 import com.baidu.carlifevehicle.protocol.ControllerHandler
 import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CommonParams.CONNECT_TYPE_SHARED_PREFERENCES
-import com.baidu.carlifevehicle.util.ConnectTypePrefs
-import com.baidu.carlifevehicle.util.AudioTransmissionPrefs
 import com.baidu.carlifevehicle.util.PreferenceUtil
 
 class VehicleApplication : Application() {
@@ -44,12 +43,6 @@ class VehicleApplication : Application() {
         app = this
 
         PreferenceUtil.getInstance().init(this)
-        // 把设置项「USB-记住授权」落到 USB 匹配组件
-        // （UsbAutoLaunchAlias + UsbDeviceMatchReceiver）的启用/禁用上。
-        // 首次安装默认值是 true（见 ConnectTypePrefs.isRememberGrant），
-        // 即默认启用匹配组件，系统授权弹窗会出现「一律允许」勾选，勾选后该 USB 设备授权一次即可；
-        // 设置为"关"时禁用匹配组件，弹窗不再有勾选，每次插入都要重新授权。
-        ConnectTypePrefs.applyRememberGrant(this, ConnectTypePrefs.isRememberGrant(this))
         resetUsbDeviceIfNecessary()
         CarlifeConfUtil.getInstance().init()
         initReceiver()
@@ -58,6 +51,19 @@ class VehicleApplication : Application() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun initReceiver() {
+
+        /**
+         * 获取屏幕的宽高，默认采用16：9的分辨率
+         * 如车厂为宽屏车机，车厂可自定义修改为8：3
+         */
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val displaySpec = DisplaySpec(
+            this,
+            screenWidth.coerceAtLeast(screenHeight).coerceAtMost(1920),
+            screenWidth.coerceAtMost(screenHeight).coerceAtMost(1080),
+            30
+        )
 
         /**
          * 连接方式默认AOA连接
@@ -73,11 +79,7 @@ class VehicleApplication : Application() {
             FEATURE_CONFIG_I_FRAME_INTERVAL to 300,
             FEATURE_CONFIG_CONNECT_TYPE to type,
             FEATURE_CONFIG_AAC_SUPPORT to 1,
-            // 声音传输通道：互联（0）= 走 carlife TCP 通道；蓝牙（1）= 走蓝牙 A2DP 通道。
-            // 默认值由 AudioTransmissionPrefs.currentMode(this) 提供（首次安装默认互联）。
-            // 用户在 SettingsActivity 切换后，AudioTransmissionPrefs.setMode 会调
-            // CarLife.receiver().setFeature(...) 运行时更新。
-            FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE to AudioTransmissionPrefs.currentMode(this),
+            FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE to 1,
             FEATURE_CONFIG_MUSIC_HUD to 1
         )
 
@@ -88,6 +90,11 @@ class VehicleApplication : Application() {
             CONFIG_LOG_LEVEL to Log.DEBUG,
             CONFIG_USE_ASYNC_USB_MODE to false,
             CONFIG_PROTOCOL_VERSION to 4
+        )
+
+        Log.d(
+            Constants.TAG,
+            "VehicleApplication initReceiver $screenWidth, $screenHeight $displaySpec"
         )
 
         /**
@@ -105,14 +112,8 @@ class VehicleApplication : Application() {
         // 车机录音初始化
         VoiceManager.init(CarLife.receiver())
 
-        // 注意：displaySpec 下发的时机点很重要。SDK 只在 onConnectionEstablished
-        // 时读取一次 displaySpec 发送 MSG_CMD_VIDEO_ENCODER_INIT 给手机端，
-        // 之后 setDisplaySpec 不会再触发重发。如果在 Application 阶段下发，
-        // 一来尺寸是按 application metrics 推算的（可能与 CarlifeActivity 中
-        // RemoteDisplayGLView 的实际尺寸有偏差，导致视频拉伸变糊）；
-        // 二来时机过早，连接可能立刻建立，把错误尺寸发给手机端。
-        // 因此这里不再 setDisplaySpec，交给 CarlifeActivity 在 GLView
-        // 第一次拿到真实测量尺寸后再下发，保证点对点不拉伸。
+        // 设置车机分辨率，这里会传递给手机端，手机端会根据此分辨率传递视频帧到车机
+        CarLife.receiver().setDisplaySpec(displaySpec)
 
         // 注册接受车机收音消息逻辑
         CarLife.receiver().registerTransportListener(VoiceMessageHandler())

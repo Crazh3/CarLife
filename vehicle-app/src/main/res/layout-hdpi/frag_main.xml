@@ -39,20 +39,6 @@
             android:src="@drawable/car_ic_exit" />
 
         <TextView
-            android:id="@+id/main_btn_settings"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_marginRight="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_toLeftOf="@id/main_btn_help"
-            android:background="@drawable/com_bg_btn_selector"
-            android:gravity="center"
-            android:scaleType="center"
-            android:text="@string/baidu_settings"
-            android:textColor="@color/cl_text_a4_title"
-            android:textSize="16sp" />
-
-        <TextView
             android:id="@+id/main_btn_help"
             android:layout_width="56dp"
             android:layout_height="56dp"

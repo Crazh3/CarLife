@@ -1,6 +1,8 @@
 package com.baidu.carlifevehicle
 
+import android.app.ActivityManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
@@ -25,11 +27,33 @@ class VehicleService : Service(), TransportListener {
         super.onConnectionEstablished(context)
 
         Logger.d("VideoRender", "onConnectionEstablished start CarlifeActivity")
-        // 如需在连接成功后把 CarlifeActivity 拉到前台，请使用 ActivityManager.AppTask 等非废弃 API 实现。
+        // 这里先注释掉，如车厂有需求，可以放开
+        // showFront();
+    }
+
+    /**
+     * 此方法用于当CarLife在后台时，此时用户连接成功，则需要把CarLife拉到前台显示出来
+     */
+    fun showFront() {
+        val mAm = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val taskList = mAm.getRunningTasks(100)
+
+        for (rti in taskList) {
+            Logger.d("VideoRender", "topActivity:", rti.topActivity!!.className)
+            // 找到当前应用的task，并启动task的栈顶activity，达到程序切换到前台
+            if (rti.topActivity!!.className.contains("CarlifeActivity")) {
+                mAm.moveTaskToFront(rti.id, 0)
+                Logger.d("VideoRender", "CarlifeActivity moveTaskToFront")
+                return
+            }
+        }
+
+        val intent = Intent(this, CarlifeActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
     }
 
     class VehicleBind : Binder() {
-        @Suppress("UNUSED_PARAMETER")
         fun serviceStatus(status: Int) {
 
         }
