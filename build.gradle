@@ -1,0 +1,53 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+
+    ext {
+        kotlin_version = '1.8.22'
+    }
+    repositories {
+        maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
+        google()
+        mavenCentral()
+        maven { url "https://jitpack.io" }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
+        classpath 'com.tencent.bugly:symtabfileuploader:2.2.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.alibaba:arouter-register:1.0.2"
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.9.4'
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
+        google()
+        mavenCentral()
+        maven { url "https://jitpack.io" }
+    }
+
+
+    // Support Kotlin interface default methods with JVM default mode
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+        kotlinOptions {
+            freeCompilerArgs = ['-Xjvm-default=all']
+            jvmTarget = "11"
+        }
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force 'org.xerial:sqlite-jdbc:3.34.0'
+        }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+apply from: "config.gradle"

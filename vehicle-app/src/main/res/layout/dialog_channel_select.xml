@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  媒体 / 导航声音通道弹窗（对齐 apollo-DuerOS1 的导航声音通道设置页）：
+    [仅导航] 导航音频焦点开关（播放时是否请求音频焦点）
+    版本：旧版（streamType）/ 新版（usage）
+    提示：当前版本的含义
+    通道网格：4 列，0~19 具名通道（通话/系统/媒体/导航/无障碍/通道11…），选中项绿色高亮
+  通道按钮由代码按当前版本动态生成到 ll_channel_grid。
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="480dp"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 导航音频焦点（仅导航通道显示） -->
+        <LinearLayout
+            android:id="@+id/ll_focus_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nav_audio_focus_title"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/nav_audio_focus_sub"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/switch_focus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/div_focus"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/textColorSecondary" />
+
+        <!-- 版本 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/channel_version"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_version_legacy"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginRight="6dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/channel_version_old"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_version_new"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginLeft="6dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/channel_version_new"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- 版本提示 -->
+        <TextView
+            android:id="@+id/tv_channel_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="14sp" />
+
+        <!-- 通道网格：代码按当前版本填充 -->
+        <LinearLayout
+            android:id="@+id/ll_channel_grid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-feature android:name="android.hardware.usb.host" />
+    <uses-feature
+        android:name="android.hardware.wifi.direct"
+        android:required="true" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:name=".VehicleApplication"
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:screenOrientation="landscape"
+        android:supportsRtl="true">
+        <activity
+            android:name=".CarlifeActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.CarLifeSDK"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!--
+          ============ USB 设备匹配组件（决定 USB 授权弹窗有没有「一律允许」勾选 = 插线能否自动拉起） ============
+          1) 弹窗有没有「一律允许」勾选，取决于本应用有没有声明
+             "USB_DEVICE_ATTACHED + device_filter 且匹配当前插入设备"的组件：
+             system_server 的判定链是 UsbUserPermissionManager.canBeDefault
+             → queryIntentActivities(GET_META_DATA) → 用 DeviceFilter.matches(device) 比对当前设备。
+             所以这里用"全匹配"过滤器（@xml/device_filter 为 <usb-device />），
+             这样"手机普通模式设备"（第一次授权框，VID 是手机厂商的，如 0x12D1/0x04E8）
+             和"AOA 设备"（第二次授权框，VID 0x18D1）都能命中。
+          2) 两个组件同开同关（见 ConnectTypePrefs.USB_MATCH_COMPONENTS），
+             由设置页「连接方式-USB-记住授权」运行时控制（见 ConnectTypePrefs.applyRememberGrant）：
+               - 记住授权 = 开 → 组件启用 → 弹窗有「一律允许」，勾一次以后插入不再弹窗；
+               - 记住授权 = 关 → 组件禁用 → 弹窗没有勾选，每次插入都要重新授权，
+                                     同时插线不会拉起本应用（需手动打开 CarLife）。
+
+          ★ 带 device_filter 的 Activity **只能有一个**（这里是 UsbAutoLaunchAlias）：
+            USB 接入时系统会 queryIntentActivities 找出所有匹配的 Activity，
+            匹配到多个时不会直接启动，而是走"默认应用/选择框"分支
+            （UsbProfileGroupSettingsManager.resolveActivity），插线就不再自动拉起界面了。
+            该 alias 指向 CarlifeActivity（launchMode=singleTask，不会叠实例），
+            且启动由系统发起（不受"后台启动 Activity 限制"约束），
+            因此 App 没启动时插线也能把界面直接拉起来。
+            "U 盘/鼠标"这类设备在 CarlifeActivity 里由 UsbAttachPolicy 判掉并立即 finish，
+            不会把 CarLife 界面弹到前台。
+
+          UsbDeviceMatchReceiver：空实现 Receiver，作为 receiver 侧的匹配声明
+          （参考工程 CarLife-Android-Vehicle 就是只声明 receiver，用于兼容把 receiver
+            也算作 USB 设备处理者的系统实现）。
+        -->
+        <receiver
+            android:name=".usb.UsbDeviceMatchReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </receiver>
+
+        <activity-alias
+            android:name=".UsbAutoLaunchAlias"
+            android:exported="true"
+            android:targetActivity=".CarlifeActivity">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </activity-alias>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar" />
+
+        <service android:name=".VehicleService" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.baidu.downloadmanager"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+    </application>
+
+</manifest>

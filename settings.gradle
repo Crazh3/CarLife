@@ -1,0 +1,4 @@
+include ':vehicle-app'
+include ':carlife-sdk'
+rootProject.name = "CarLife-Android-Vehicle-V2.0"
+

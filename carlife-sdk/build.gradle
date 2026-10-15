@@ -1,0 +1,165 @@
+apply plugin: 'com.android.library'
+
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
+apply plugin: 'kotlin-parcelize'
+
+apply plugin: 'com.google.protobuf'
+
+kapt {
+    arguments {
+        arg("AROUTER_MODULE_NAME", project.getName())
+    }
+}
+android {
+    namespace 'com.baidu.carlife.sdk'
+
+    compileSdkVersion rootProject.ext.android.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.android.minSdkVersion
+        targetSdkVersion rootProject.ext.android.targetSdkVersion
+        versionCode rootProject.ext.android.versionCode
+        versionName rootProject.ext.android.versionName
+
+        flavorDimensions "versionCode"
+
+        buildConfigField "String", "CARLIFE_SDK_VERSION", CARLIFE_SDK_VERSION
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    // AGP 7 起不再支持自定义 AAR 输出目录，这里只设置文件名，
+    // 打包后由 copyXxxAar 任务把产物同步到项目根 libs 目录
+    android.libraryVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "${project.name}-${variant.buildType.name}.aar"
+        }
+        def copyAar = tasks.register("copy${variant.name.capitalize()}Aar", Copy) {
+            from("${buildDir}/outputs/aar") {
+                include "${project.name}-${variant.buildType.name}.aar"
+            }
+            into rootProject.file("libs")
+        }
+        variant.assembleProvider?.configure { finalizedBy copyAar }
+    }
+
+    // protoc-gen-javalite 3.0.0 生成的代码含 unchecked 泛型转换，javac 对该提示的强制输出无法
+    // 通过编译参数关闭（JLS 规定），因此在生成动作结束后为这些文件补加 @SuppressWarnings("unchecked")
+    android.libraryVariants.all { variant ->
+        def variantName = variant.name
+        def variantCap = variantName.capitalize()
+        tasks.matching { it.name == "generate${variantCap}Proto" }.configureEach { genTask ->
+            genTask.doLast {
+                def genRoot = file("${buildDir}/generated/source/proto/${variantName}/javalite")
+                if (genRoot.exists()) {
+                    genRoot.eachFileRecurse { f ->
+                        if (f.name.endsWith('.java')) {
+                            def text = f.getText('UTF-8')
+                            if (!text.contains('@SuppressWarnings("unchecked")')) {
+                                def patched = text.replaceFirst(
+                                        /(?m)^public final class/,
+                                        '@SuppressWarnings("unchecked")\npublic final class')
+                                if (patched != text) {
+                                    f.setText(patched, 'UTF-8')
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //注意，这里的配置是为了去除gradle对library module默认只编译release buildType的限制
+//    publishNonDefault true
+
+    buildTypes {
+        release {
+            // TODO 混淆暂时关闭
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+//    packagingAAR(project, android)
+
+    compileOptions {
+        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_11
+        languageVersion = "1.8"
+        apiVersion = "1.8"
+        freeCompilerArgs = ['-Xjvm-default=all']
+    }
+
+    lintOptions {
+//        checkReleaseBuilds true
+        abortOnError false
+    }
+
+    buildFeatures{
+        viewBinding = true
+    }
+
+    aaptOptions {
+        noCompress "pcm"
+    }
+
+    sourceSets {
+        main {
+            aidl.srcDirs = ['src/main/java']
+            proto {
+                srcDir 'src/main/proto' //指定.proto文件路径
+            }
+        }
+    }
+
+}
+
+protobuf {
+    protoc {
+        // Download from repositories
+        if (osdetector.os == "osx") {
+            artifact = 'com.google.protobuf:protoc:3.2.0:osx-x86_64'
+        } else {
+            artifact = 'com.google.protobuf:protoc:3.2.0'
+        }
+    }
+    plugins {
+        javalite {
+            // The codegen for lite comes as a separate artifact
+            if (osdetector.os == "osx") {
+                artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0:osx-x86_64'
+            } else {
+                artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0'
+            }
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins {
+                javalite {}
+            }
+        }
+    }
+}
+
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+    api "com.google.protobuf:protobuf-lite:3.0.1"
+    implementation  "com.squareup.okhttp3:okhttp:3.14.9"
+
+    api rootProject.ext.dependencies["gson"]
+
+    api rootProject.ext.kotlinx_coroutines["core"]
+    api rootProject.ext.kotlinx_coroutines["android"]
+
+}

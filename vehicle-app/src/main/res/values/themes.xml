@@ -1,0 +1,45 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.CarLifeSDK" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        <!-- Customize your theme here. -->
+
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@drawable/ic_launcher_background</item>
+    </style>
+
+    <!--
+        设置页主题：复用项目内 MaterialComponents.DayNight.NoActionBar，
+        标题栏通过 include carlife_common_title_bar_new 实现。
+
+        注意：parent 用 Theme.MaterialComponents.DayNight.NoActionBar 而非 Theme.CarLifeSDK，
+        是因为 Theme.CarLifeSDK 带 android:windowFullscreen=true，会强制设置 window flag
+        FLAG_FULLSCREEN，导致 SettingsActivity 状态栏永远被隐藏（且 onCreate 中再调
+        setSystemUiVisibility(SYSTEM_UI_FLAG_VISIBLE) 无法清掉 window flag）。
+
+        SettingsActivity 在 onCreate 中调用 DisplayModeConfig.apply(this) 统一控制：
+        - 沉浸式全屏：状态栏 + 导航栏都隐藏
+        - 系统默认：状态栏 + 导航栏都显示
+        行为与 CarlifeActivity 完全一致。
+
+        AndroidManifest 中声明的 Theme.AppCompat.DayNight.DarkActionBar 别名兼容保留。
+    -->
+    <style name="Theme.AppCompat.DayNight.DarkActionBar" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@drawable/ic_launcher_background</item>
+    </style>
+</resources>
