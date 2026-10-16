@@ -71,13 +71,21 @@ class UsbAccessoryCommunicator(
             usbInterface = usbDevice.getInterface(0)
             usbConnection = usbManager.openDevice(usbDevice)
             usbConnection!!.claimInterface(usbInterface, true)
-            val starterOk = UsbAccessoryStarter(usbDevice, usbConnection!!).openAccessory()
+            val starter = UsbAccessoryStarter(usbDevice, usbConnection!!)
+            val starterOk = starter.openAccessory()
             if (!starterOk) {
                 // 切换AOA模式成功之后，USB会重新连接一次，以新的VID，PID重新连接
                 // 返回true的条件必须是检测处于AOA mode才行
                 terminate(false)
                 Logger.d(Constants.TAG, "UsbAccessoryCommunicator openAccessory switch to aoa (starter returned false)")
                 return false
+            }
+            if (starter.triggeredForceReInit) {
+                // 注意（实测）：设备**已经**处于 AOA 模式时再发 AOA_START_ACCESSORY，手机不一定
+                // 真的重新枚举（VID/PID 没变，系统不会发 ACTION_USB_DEVICE_ATTACHED），
+                // 这种情况下 usbConnection 仍然有效。所以这里**不能**放弃本次连接去等"重连事件"——
+                // 那个事件永远不会来，连接就彻底建不起来了。仍按原逻辑等端点就绪后返回成功。
+                Log.w(Constants.TAG, "UsbAccessoryCommunicator force re-init sent (phone may not re-enumerate while already in AOA), continue waiting endpoint ready")
             }
             // 等待手机端 AOA bulk 端点就绪后再返回。
             // claimInterface 成功 ≠ 端点可写：端点 ready 比 interface claim 慢一截。

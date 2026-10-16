@@ -7,6 +7,7 @@ import com.baidu.carlife.sdk.CarLifeContext
 import com.baidu.carlife.sdk.Constants
 import com.baidu.carlife.sdk.receiver.CarLife
 import com.baidu.carlife.sdk.util.Logger
+import com.baidu.carlifevehicle.R
 
 /**
  * 连接方式偏好：
@@ -34,6 +35,9 @@ object ConnectTypePrefs {
 
     private const val TAG = "ConnectTypePrefs"
 
+    /** 设置页「连接方式」值里各段的分隔符，如 "USB | 记住" */
+    private const val FLAG_SEPARATOR = " | "
+
     /**
      * 与 AndroidManifest 中的 activity-alias 对应：指向 CarlifeActivity，
      * 既是"插线自动拉起界面"的入口（系统发起的启动，不受后台启动限制），
@@ -46,13 +50,26 @@ object ConnectTypePrefs {
         "com.baidu.carlifevehicle.usb.UsbDeviceMatchReceiver"
 
     /**
-     * 所有会让系统认为"本应用是该 USB 设备默认处理者"的组件，必须**同开同关**：
-     * 只要还留着一个启用中的匹配组件，授权弹窗就会继续带「一律允许」勾选，
-     * "记住授权 = 关" 就不生效。
+     * 两个 USB 匹配组件分别对应弹窗里的两个勾选项（用户视角是独立开关）：
+     *
+     *  - [USB_ALIAS_CLASS]（activity-alias）→ 「USB拉起APP」：
+     *    插线时系统启动匹配到的 activity，直接把 CarlifeActivity 拉起来（App 未启动也一样）。
+     *    同时它也是系统 canBeDefault（"本应用是该设备默认处理者"）判定的**主载体**。
+     *  - [USB_MATCH_RECEIVER_CLASS]（receiver）→ 「记住授权」：
+     *    按参考工程 CarLife-Android-Vehicle 的 AOAAccessoryReceiver 补的兼容载体，
+     *    用于让部分把 receiver 也算作处理者的系统实现同样给出「一律允许」勾选。
+     *
+     * 注意（系统层面的耦合，无法彻底解耦）：授权弹窗到底给不给「一律允许」勾选，
+     * 取决于系统是否认定本应用是默认处理者，而这个判定主要看**带 device_filter 的 Activity**，
+     * 也就是 alias。所以「USB拉起APP = 开」时，即便「记住授权 = 关」，
+     * 授权弹窗**仍会**带勾选 —— 这是 AOSP 的行为，不是本实现的 bug。
+     * 反过来「USB拉起APP = 关、记住授权 = 开」则基本不起作用（没有 activity 载体可拉起）。
+     * 这里仍然让两者独立可配，是为了让用户能按自己的需要组合。
+     *
      * 带 device_filter 的 Activity 只能有一个（多个匹配会让系统走"默认应用/选择框"分支，
      * 插线不再自动拉起界面），所以这里只有 alias 一个 Activity 载体。
      */
-    private val USB_MATCH_COMPONENTS = arrayOf(USB_ALIAS_CLASS, USB_MATCH_RECEIVER_CLASS)
+    private const val KEY_USB_AUTO_LAUNCH = "usb_auto_launch"
 
     /** 中文显示名 */
     fun typeName(type: Int): String = when (type) {
@@ -65,8 +82,31 @@ object ConnectTypePrefs {
         PreferenceUtil.getInstance()
             .getInt(CommonParams.CONNECT_TYPE_SHARED_PREFERENCES, CarLifeContext.CONNECTION_TYPE_AOA)
 
-    @Suppress("UNUSED_PARAMETER") // context 暂未使用（沿用 API 形态便于 SettingsActivity 调用）
-    fun typeName(context: Context): String = typeName(currentType())
+    /**
+     * 设置页「连接方式」条目显示的当前值，把两个 USB 勾选也带上一同显示：
+     *  - 非 USB 连接方式："WIFI" / "直连"
+     *  - USB 且两个勾选都关："USB"
+     *  - 勾了「记住授权」："USB | 记住"
+     *  - 再勾上「USB拉起APP」："USB | 记住 | 拉起"
+     *
+     * （「USB拉起APP」依赖「记住授权」，所以不会出现只带「拉起」不带「记住」的组合，
+     *   见 ConnectTypeDialog 里对该项的置灰处理。）
+     */
+    fun typeName(context: Context): String {
+        val type = currentType()
+        val text = StringBuilder(typeName(type))
+        if (type == CarLifeContext.CONNECTION_TYPE_AOA) {
+            if (isRememberGrant(context)) {
+                text.append(FLAG_SEPARATOR)
+                    .append(context.getString(R.string.connect_type_flag_remember))
+            }
+            if (isUsbAutoLaunch(context)) {
+                text.append(FLAG_SEPARATOR)
+                    .append(context.getString(R.string.connect_type_flag_launch))
+            }
+        }
+        return text.toString()
+    }
 
     /**
      * 切换连接方式：持久化 + 立即通知 SDK 重建传输通道。
@@ -99,15 +139,39 @@ object ConnectTypePrefs {
      * 清单里两个 USB 匹配组件也声明了 android:enabled="false"，因此首次启动前同样是"不记住"。
      */
     fun isRememberGrant(context: Context): Boolean =
-        context.getSharedPreferences("vehicle_settings", Context.MODE_PRIVATE)
-            .getBoolean("usb_grant_remember", false)
+        prefs(context).getBoolean("usb_grant_remember", false)
 
     fun setRememberGrant(context: Context, enabled: Boolean) {
-        context.getSharedPreferences("vehicle_settings", Context.MODE_PRIVATE)
-            .edit().putBoolean("usb_grant_remember", enabled).apply()
+        prefs(context).edit().putBoolean("usb_grant_remember", enabled).apply()
         Logger.d(TAG, "setRememberGrant $enabled")
         applyRememberGrant(context, enabled)
+        // 「USB拉起APP」依赖「记住授权」：关掉记住授权时一并关掉拉起，
+        // 避免出现「记住授权关、拉起开」这种无意义的组合（也保证设置页拼接的值不自相矛盾）
+        if (!enabled && isUsbAutoLaunch(context)) {
+            setUsbAutoLaunch(context, false)
+        }
     }
+
+    /**
+     * 是否开启「USB拉起APP」，**默认关闭**（首次安装 / 清除应用数据后为关）。
+     *
+     * 开 → 插线时系统直接拉起 CarLife 界面（App 未启动也一样）；
+     * 关 → 插线不拉起，需要手动打开本应用。
+     *
+     * 副作用（AOSP 行为，无法规避）：activity-alias 同时是系统 canBeDefault 判定的主载体，
+     * 所以本项开启后，USB 授权弹窗也会带上「一律允许」勾选。详见 [USB_ALIAS_CLASS] 的说明。
+     */
+    fun isUsbAutoLaunch(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_USB_AUTO_LAUNCH, false)
+
+    fun setUsbAutoLaunch(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_USB_AUTO_LAUNCH, enabled).apply()
+        Logger.d(TAG, "setUsbAutoLaunch $enabled")
+        applyUsbAutoLaunch(context, enabled)
+    }
+
+    private fun prefs(context: Context) =
+        context.getSharedPreferences("vehicle_settings", Context.MODE_PRIVATE)
 
     /**
      * 把「记住授权」落到系统能识别的地方：启用/禁用所有 USB 匹配组件。
@@ -127,32 +191,44 @@ object ConnectTypePrefs {
      * 或卸载重装本应用（系统会连同该包的 USB 默认授权一起清掉）才看得到区别。
      */
     fun applyRememberGrant(context: Context, enabled: Boolean) {
+        setComponentEnabled(context, USB_MATCH_RECEIVER_CLASS, enabled, "applyRememberGrant")
+    }
+
+    /** 「USB拉起APP」落到系统能识别的地方：启用/禁用 activity-alias（插线拉起入口）。 */
+    fun applyUsbAutoLaunch(context: Context, enabled: Boolean) {
+        setComponentEnabled(context, USB_ALIAS_CLASS, enabled, "applyUsbAutoLaunch")
+    }
+
+    private fun setComponentEnabled(
+        context: Context,
+        className: String,
+        enabled: Boolean,
+        logTag: String
+    ) {
         val packageManager = context.packageManager
         val state = if (enabled) {
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         } else {
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
         }
-        for (className in USB_MATCH_COMPONENTS) {
-            val component = ComponentName(context.packageName, className)
-            if (packageManager.getComponentEnabledSetting(component) == state) {
-                Logger.d(TAG, "applyRememberGrant $className already ${stateName(state)}")
-                continue
-            }
-            try {
-                packageManager.setComponentEnabledSetting(
-                    component,
-                    state,
-                    PackageManager.DONT_KILL_APP
-                )
-                Logger.d(
-                    TAG,
-                    "applyRememberGrant $className -> ${stateName(state)}, " +
-                            "now=${packageManager.getComponentEnabledSetting(component)}"
-                )
-            } catch (e: Exception) {
-                Logger.e(TAG, "applyRememberGrant $className failed: ", e)
-            }
+        val component = ComponentName(context.packageName, className)
+        if (packageManager.getComponentEnabledSetting(component) == state) {
+            Logger.d(TAG, "$logTag $className already ${stateName(state)}")
+            return
+        }
+        try {
+            packageManager.setComponentEnabledSetting(
+                component,
+                state,
+                PackageManager.DONT_KILL_APP
+            )
+            Logger.d(
+                TAG,
+                "$logTag $className -> ${stateName(state)}, " +
+                        "now=${packageManager.getComponentEnabledSetting(component)}"
+            )
+        } catch (e: Exception) {
+            Logger.e(TAG, "$logTag $className failed: ", e)
         }
     }
 

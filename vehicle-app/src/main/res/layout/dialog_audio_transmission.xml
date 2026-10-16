@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "音频传输通道"弹窗：互联通道 / 蓝牙通道 二选一。
+  颜色与尺寸策略与 dialog_connect_type.xml / dialog_display_mode.xml 保持一致：
+  - 文字用 ?android:attr/textColorPrimary（深色模式白字、浅色模式黑字）
+  - 圆圈用 app:buttonTint="@color/teal_200"，深/浅背景下都明显可见
+  - 说明文字用 ?android:attr/textColorSecondary
+  - 点击只改 UI 状态，由 AlertDialog 的 positive button 触发保存（见 AudioTransmissionDialog）
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <RadioGroup
+        android:id="@+id/rg_audio_transmission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/rb_audio_transmission_carlife"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            app:buttonTint="@color/teal_200"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/audio_transmission_carlife" />
+
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/rb_audio_transmission_bluetooth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            app:buttonTint="@color/teal_200"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/audio_transmission_bluetooth" />
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/tv_audio_transmission_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp"
+        android:textSize="14sp"
+        android:lineSpacingExtra="2dp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:text="@string/audio_transmission_hint" />
+</LinearLayout>

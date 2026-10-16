@@ -9,6 +9,18 @@ import com.baidu.carlife.sdk.util.Logger
 
 class UsbAccessoryStarter(private val usbDevice: UsbDevice,
                           private val usbConnection: UsbDeviceConnection) {
+
+    /**
+     * 本次 openAccessory 是否触发了强制重枚举（force re-init 的 AOA_START_ACCESSORY）。
+     *
+     * 实测：设备**已经**处于 AOA 模式时再发 AOA_START_ACCESSORY，手机不一定真的重新枚举
+     * （VID/PID 不变、系统不发 ACTION_USB_DEVICE_ATTACHED），此时 usbConnection 仍然有效。
+     * 所以调用方**不能**据此放弃本次连接去等"重连事件"——那个事件可能永远不会来。
+     * 这里仅用于诊断输出。
+     */
+    var triggeredForceReInit: Boolean = false
+        private set
+
     companion object {
         const val VID_ACCESSORY = 0x18D1
 
@@ -31,14 +43,33 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
         const val AOA_URI = "http://carlife.baidu.com/"
         const val AOA_SERIAL_NUMBER = "0720SerialNo."
 
-        // 已经走"强制 AOA_START_ACCESSORY"路径的设备（用 vid:pid:serial 唯一标识）。
-        // AOA_START_ACCESSORY 会让手机重新枚举 → 同一台物理设备会被 scanner 当成新 UsbDevice
-        // 再走一次 openAccessory；如果不记下来，第二次又调一次 AOA_START_ACCESSORY 就会无限循环。
-        // 进程重启会清掉这个集合（Class 静态字段），相当于"每次 App 启动最多重初始化一次"。
-        private val forceReInitDevices = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        /**
+         * 两次"强制 AOA_START_ACCESSORY"（重新向 phone HAL 注册身份、唤醒 phone 端 CarLife app）
+         * 之间的最小间隔。
+         *
+         * 实测（车机 1280x720 + 手机已在 AOA 模式）：设备已经在 AOA 模式时再发
+         * AOA_START_ACCESSORY **不会**让手机重新枚举（VID/PID 不变，系统不发
+         * ACTION_USB_DEVICE_ATTACHED），所以它不会造成 USB 反复断开，只是重新注册身份。
+         *
+         * 之所以要"允许再来一次"而不是"一个进程只做一次"：手机端 CarLife app 常常不会在
+         * 第一次注册时就把 bulk 端点打开监听（app 没起来 / 锁屏 / 被别的 AOA 客户端占用）。
+         * 那时车机会一直 bulkTransfer ret=-1，每 ~14s 空转重试一轮；如果整个进程只允许
+         * 唤醒一次，这次没唤醒成功就再也唤不醒了，表现为"启动后隔很久才连上"甚至一直连不上。
+         *
+         * 用最小间隔（而不是次数）限制，既能周期性重试唤醒，又不会密集地反复注册。
+         */
+        private const val FORCE_REINIT_MIN_INTERVAL_MS = 12_000L
+
+        // A/B 诊断开关（实测已验证：关掉它 bulkTransfer 照样 ret=-1，说明重注册身份不是
+        // 连接失败的原因）。默认开启：能周期性把身份重新注册给 phone HAL，
+        // 手机端 CarLife app 晚启动时仍有机会被唤醒。
+        private const val FORCE_REINIT_ENABLED = true
+
+        // key = vid:pid:serial，value = 上次强制注册的时间戳
+        private val forceReInitTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
         fun resetForceReInitState() {
-            forceReInitDevices.clear()
+            forceReInitTimes.clear()
         }
     }
     /**
@@ -80,12 +111,16 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
             // 防无限循环：同一台物理设备在一次 App 进程内只调一次 AOA_START_ACCESSORY，
             // 用 vid:pid:serial 作 key 记录到 forceReInitDevices；进程重启自动清空。
             val key = "${usbDevice.vendorId}:${usbDevice.productId}:${usbDevice.serialNumber}"
-            if (key !in forceReInitDevices) {
+            val last = forceReInitTimes[key]
+            val now = android.os.SystemClock.elapsedRealtime()
+            val ago = if (last == null) -1L else now - last
+            if (FORCE_REINIT_ENABLED && (last == null || ago >= FORCE_REINIT_MIN_INTERVAL_MS)) {
                 val startRet = startAccessory()
-                forceReInitDevices.add(key)
-                Log.w(Constants.TAG, "UsbAccessoryStarter AOA_START_ACCESSORY (force re-init, key=$key) ret=$startRet")
+                forceReInitTimes[key] = now
+                triggeredForceReInit = true
+                Log.w(Constants.TAG, "UsbAccessoryStarter AOA_START_ACCESSORY (force re-init, key=$key, ago=${if (ago < 0) "first" else ago.toString() + "ms"}) ret=$startRet")
             } else {
-                Log.w(Constants.TAG, "UsbAccessoryStarter skip AOA_START_ACCESSORY (already force-re-init'd this session, key=$key)")
+                Log.w(Constants.TAG, "UsbAccessoryStarter skip AOA_START_ACCESSORY (enabled=$FORCE_REINIT_ENABLED, ago=${ago}ms, min=${FORCE_REINIT_MIN_INTERVAL_MS}ms, key=$key)")
             }
             return true
         }

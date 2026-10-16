@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "媒体音频通道" / "导航音频通道"弹窗（两者共用，标题由代码设置）：
+  与官方车机端 App 的设置项一一对应：
+  - 播放时请求音频焦点            AUDIO_MEDIA_REQUEST_FOCUS / AUDIO_TTS_REQUEST_FOCUS
+  - 版本：新版 / 旧版（同一行）    AUDIO_MEDIA_LEGACY_API    / AUDIO_TTS_LEGACY_API
+  - 音频通道（点选 0~23）         AUDIO_MEDIA_CHANNEL       / AUDIO_TTS_CHANNEL
+  「音频通道」的格子与官方一致：0~23 共 24 个（4 列 6 行），有名字的显示名字、
+  没名字的显示「通道N」；切「版本」时格子文案跟着变（同一个数值：新版 = usage、旧版 = streamType）。
+  整个内容放在一个 ScrollView 里：车机屏幕高度不固定（常见 720px），内容高于弹窗可视高度时
+  **整体滑动**（不是只滑网格那一块），不会出现格子被裁掉、看不到通道的情况。
+  颜色策略与其它弹窗一致：文字 textColorPrimary、控件 buttonTint teal_200、说明文字 textColorSecondary。
+  点击只改 UI 状态（并用该通道试听），positive button 才保存。
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/scroll_audio_channel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <androidx.appcompat.widget.AppCompatCheckBox
+            android:id="@+id/cb_audio_focus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            app:buttonTint="@color/teal_200"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/audio_focus_switch" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/cl_text_c_btn_dialog" />
+
+        <TextView
+            android:id="@+id/tv_audio_version"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:textSize="16sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:text="@string/audio_version" />
+
+        <!-- 新版 / 旧版并排一行 -->
+        <RadioGroup
+            android:id="@+id/rg_audio_version"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatRadioButton
+                android:id="@+id/rb_audio_version_new"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:layout_marginEnd="32dp"
+                app:buttonTint="@color/teal_200"
+                android:textSize="18sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:text="@string/audio_version_new" />
+
+            <androidx.appcompat.widget.AppCompatRadioButton
+                android:id="@+id/rb_audio_version_legacy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                app:buttonTint="@color/teal_200"
+                android:textSize="18sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:text="@string/audio_version_legacy" />
+        </RadioGroup>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/cl_text_c_btn_dialog" />
+
+        <TextView
+            android:id="@+id/tv_audio_channel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:textSize="16sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:text="@string/audio_channel_value" />
+
+        <!-- 0~23 的通道格子（4 列 6 行），与官方一致，由 AudioChannelDialog 填充 -->
+        <GridLayout
+            android:id="@+id/grid_audio_channel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:columnCount="4" />
+
+        <TextView
+            android:id="@+id/tv_audio_channel_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:textSize="14sp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:text="@string/audio_channel_hint" />
+    </LinearLayout>
+</ScrollView>

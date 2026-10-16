@@ -70,6 +70,12 @@
     <string name="connect_type_wifi">WIFI</string>
     <string name="connect_type_direct">直连</string>
     <string name="connect_type_remember_title">记住授权</string>
+    <!-- 弹窗里该项的展示名：功能实质是「插线时系统自动拉起 CarLife」，
+         内部仍复用 ConnectTypePrefs.isRememberGrant 的开关（两者在系统层依赖同一组组件） -->
+    <string name="connect_type_usb_launch_title">USB拉起APP</string>
+    <!-- 设置页「连接方式」条目当前值里的简写标记，拼成如 "USB | 记住 | 拉起" -->
+    <string name="connect_type_flag_remember">记住</string>
+    <string name="connect_type_flag_launch">拉起</string>
     <string name="connect_type_remember_on">开</string>
     <string name="connect_type_remember_off">关</string>
     <!-- 设置-连接方式 -END -->
@@ -199,4 +205,49 @@
     <string name="notification_download_title">CarLife 正在下载</string>
     <string name="gps_data_tips">请开启GPS导航...</string>
     <string name="loading_progress_tips">连接中...</string>
+
+    <!-- 音频设置 -START -->
+    <string name="audio_transmission_title">音频传输通道</string>
+    <string name="audio_transmission_carlife">互联通道</string>
+    <string name="audio_transmission_bluetooth">蓝牙通道</string>
+    <string name="audio_transmission_hint">互联通道：手机音频经 CarLife 通道传给车机播放，可继续设置下方的媒体/导航音频通道；蓝牙通道：手机通过蓝牙直接播放，车机不接管音频。</string>
+
+    <string name="audio_media_channel_title">媒体音频通道</string>
+    <string name="audio_navi_channel_title">导航音频通道</string>
+
+    <string name="audio_focus_switch">播放时请求音频焦点</string>
+    <string name="audio_focus_on">请求</string>
+    <string name="audio_focus_off">不请求</string>
+
+    <string name="audio_version">版本</string>
+    <string name="audio_version_new">新版</string>
+    <string name="audio_version_legacy">旧版</string>
+
+    <string name="audio_channel_value">音频通道</string>
+    <string name="audio_channel_hint">点选一个通道后会立刻用该通道播放一段试听音，方便判断车机上哪条通道出声；同一数值在新版（音频用途）与旧版（音频流类型）下含义不同，切换版本后名字会跟着变。</string>
+    <string name="audio_channel_unknown">%1$d通道</string>
+    <string name="audio_channel_invalid">通道 %1$d 当前不可用，请另选一个</string>
+
+    <string name="audio_channel_voice_call">通话</string>
+    <string name="audio_channel_system">系统</string>
+    <string name="audio_channel_ring">铃声</string>
+    <string name="audio_channel_music">媒体</string>
+    <string name="audio_channel_game">游戏</string>
+    <string name="audio_channel_alarm">闹钟</string>
+    <string name="audio_channel_notification">通知</string>
+    <string name="audio_channel_dial_tone">拨号音</string>
+    <string name="audio_channel_navigation">导航</string>
+    <!-- 音频设置 -END -->
+
+    <!-- 显示方式 -START -->
+    <string name="display_mode_title">显示方式</string>
+    <string name="display_mode_system">系统默认</string>
+    <string name="display_mode_immersive">沉浸式全屏</string>
+    <!-- 显示方式 -END -->
+
+    <!-- 主题同步 -START -->
+    <string name="theme_sync_title">主题同步</string>
+    <string name="theme_sync_switch">深浅色同步给手机</string>
+    <string name="theme_sync_hint">开启后，手机端会跟随车机的深色/浅色主题；关闭后手机端保持自己的主题设置。</string>
+    <!-- 主题同步 -END -->
 </resources>

@@ -8,7 +8,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.baidu.carlife.sdk.receiver.CarLife
-import com.baidu.carlife.sdk.internal.DisplaySpec
+import com.baidu.carlifevehicle.util.DisplaySpecConfig
 
 class SettingsActivity: AppCompatActivity() {
 
@@ -50,12 +50,8 @@ class SettingsActivity: AppCompatActivity() {
 
         override fun onPreferenceChange(preference: Preference, newValue: Any): Boolean {
             Log.d("SettingsActivity", "preference $preference newValue $newValue")
-            when (newValue) {
-                "1920x1080" -> CarLife.receiver().setDisplaySpec(DisplaySpec(activity!!, 1920, 1080, 30))
-                "1280x720" -> CarLife.receiver().setDisplaySpec(DisplaySpec(activity!!, 1280, 720, 30))
-                "1024x576" -> CarLife.receiver().setDisplaySpec(DisplaySpec(activity!!, 1024, 576, 30))
-                "1280x480" -> CarLife.receiver().setDisplaySpec(DisplaySpec(activity!!, 1280, 480, 30))
-            }
+            // 注意：此时新值还没写入 SharedPreferences，需要显式传入
+            CarLife.receiver().setDisplaySpec(DisplaySpecConfig.build(activity!!, newValue.toString()))
             return true
         }
     }

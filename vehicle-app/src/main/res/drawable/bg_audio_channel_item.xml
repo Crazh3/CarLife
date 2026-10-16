@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「音频通道」格子背景（0~23 的网格）：选中 = teal_200 实心，未选中 = 淡底 + 可见描边。
+  弹窗是浅色背景（项目用 Theme.MaterialComponents.DayNight，弹窗文字色 cl_text_c_btn_dialog 是 #666666），
+  所以未选中态不能用"白底白字"（那样看不见），改成淡底 + 深色描边，格子边界一眼能看出来。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/teal_200" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#12000000" />
+            <stroke
+                android:width="1dp"
+                android:color="#42000000" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+</selector>

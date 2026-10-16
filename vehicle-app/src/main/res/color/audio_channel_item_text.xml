@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「音频通道」格子文字色：弹窗是浅色底，所以两种状态都用深色文字
+  （选中时压在 teal_200 上，用近黑更清楚；未选中用 87% 黑，与 Material 主文字一致）。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true" android:color="#FF1B1B1B" />
+    <item android:color="#DE000000" />
+</selector>

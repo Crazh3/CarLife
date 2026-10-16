@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "显示方式"弹窗：系统默认 / 沉浸式全屏 二选一。
+  颜色与尺寸策略与 dialog_connect_type.xml 保持一致：
+  - 文字用 ?android:attr/textColorPrimary（深色模式白字、浅色模式黑字）
+  - 圆圈用 app:buttonTint="@color/teal_200"，深/浅背景下都明显可见
+  - 点击选项只改 UI 状态，由 AlertDialog 的 positive button 触发保存（见 DisplayModeDialog）
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <RadioGroup
+        android:id="@+id/rg_display_mode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/rb_display_system"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            app:buttonTint="@color/teal_200"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/display_mode_system" />
+
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/rb_display_immersive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            app:buttonTint="@color/teal_200"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/display_mode_immersive" />
+    </RadioGroup>
+</LinearLayout>

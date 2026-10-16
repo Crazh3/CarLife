@@ -17,18 +17,24 @@ import com.baidu.carlifevehicle.R
 import com.permissionx.guolindev.PermissionX
 
 /**
- * 「连接方式」弹窗：USB / WIFI / 直连 三选一 +「记住授权」勾选。
+ * 「连接方式」弹窗：USB / WIFI / 直连 三选一 + 两个 USB 勾选：「USB拉起APP」「记住授权」。
  *
- * - 勾选项只在选中 USB 时显示（WIFI / 直连没有 USB 授权这个概念），布局见
+ * - 两个勾选项都只在选中 USB 时显示（WIFI / 直连没有插线这个概念），布局见
  *   [R.layout.dialog_connect_type]。
  * - 点选只改界面状态，点「确定」时才统一落盘（见 [ConnectTypePrefs]）。
  * - 直连(WLAN P2P) 需要定位权限，权限通过后才真正切换。
- * - 记住授权 = 开：系统 USB 授权弹窗会带「一律允许」勾选，勾一次以后插入不再弹窗，
- *   并且插线时系统会直接拉起 CarLife；关：弹窗无勾选，每次插入都要重新授权。
+ * - USB拉起APP：插线时系统是否直接拉起 CarLife 界面（App 未启动也一样）。
+ * - 记住授权：USB 授权弹窗是否给出「一律允许」勾选（勾一次以后插入不再弹窗）。
+ *
+ * 两者在系统层有耦合（activity-alias 是 canBeDefault 主载体，开启"USB拉起APP"
+ * 后授权弹窗也会带勾选），详细说明见 [ConnectTypePrefs] 中 USB_ALIAS_CLASS 的注释。
  */
 object ConnectTypeDialog {
 
     private const val TAG = "ConnectTypeDialog"
+
+    /** 置灰时的透明度（Material 规范的 disabled alpha） */
+    private const val DISABLED_ALPHA = 0.38f
 
     /**
      * 显示弹窗。
@@ -41,10 +47,13 @@ object ConnectTypeDialog {
         val rbUsb = view.findViewById<RadioButton>(R.id.rb_usb)
         val rbWifi = view.findViewById<RadioButton>(R.id.rb_wifi)
         val rbDirect = view.findViewById<RadioButton>(R.id.rb_direct)
+        val llUsbAutoLaunch = view.findViewById<LinearLayout>(R.id.ll_usb_auto_launch)
+        val cbUsbAutoLaunch = view.findViewById<AppCompatCheckBox>(R.id.cb_usb_auto_launch)
         val llRemember = view.findViewById<LinearLayout>(R.id.ll_remember_grant)
         val cbRemember = view.findViewById<AppCompatCheckBox>(R.id.cb_remember_grant)
 
         val currentType = ConnectTypePrefs.currentType()
+        val currentUsbAutoLaunch = ConnectTypePrefs.isUsbAutoLaunch(activity)
         val currentRemember = ConnectTypePrefs.isRememberGrant(activity)
         when (currentType) {
             CarLifeContext.CONNECTION_TYPE_HOTSPOT -> rbWifi.isChecked = true
@@ -52,9 +61,17 @@ object ConnectTypeDialog {
             else -> rbUsb.isChecked = true
         }
         cbRemember.isChecked = currentRemember
-        updateRememberVisibility(rbUsb, llRemember)
+        cbUsbAutoLaunch.isChecked = currentUsbAutoLaunch
+        updateUsbOptionsVisibility(rbUsb, llUsbAutoLaunch, llRemember)
+        updateUsbLaunchEnabled(cbRemember, cbUsbAutoLaunch)
 
-        rgType.setOnCheckedChangeListener { _, _ -> updateRememberVisibility(rbUsb, llRemember) }
+        rgType.setOnCheckedChangeListener { _, _ ->
+            updateUsbOptionsVisibility(rbUsb, llUsbAutoLaunch, llRemember)
+        }
+        // 「USB拉起APP」跟随「记住授权」的勾选状态启用/置灰
+        cbRemember.setOnCheckedChangeListener { _, _ ->
+            updateUsbLaunchEnabled(cbRemember, cbUsbAutoLaunch)
+        }
 
         val dialog = AlertDialog.Builder(activity)
             .setTitle(R.string.connect_type_title)
@@ -78,11 +95,13 @@ object ConnectTypeDialog {
                     rbDirect.isChecked -> CarLifeContext.CONNECTION_TYPE_WIFIDIRECT
                     else -> currentType
                 }
+                val newUsbAutoLaunch = cbUsbAutoLaunch.isChecked
                 val newRemember = cbRemember.isChecked
                 val typeChanged = newType != currentType
+                val usbLaunchChanged = newUsbAutoLaunch != currentUsbAutoLaunch
                 val rememberChanged = newRemember != currentRemember
 
-                if (!typeChanged && !rememberChanged) {
+                if (!typeChanged && !usbLaunchChanged && !rememberChanged) {
                     dialog.dismiss()
                     return@setOnClickListener
                 }
@@ -90,13 +109,19 @@ object ConnectTypeDialog {
                 // 直连需要定位权限，授权通过后再落盘
                 if (typeChanged && newType == CarLifeContext.CONNECTION_TYPE_WIFIDIRECT) {
                     dialog.dismiss()
-                    requestDirectPermissionAndApply(activity, newType, newRemember, onChanged)
+                    requestDirectPermissionAndApply(
+                        activity, newType, newUsbAutoLaunch, newRemember, onChanged
+                    )
                     return@setOnClickListener
                 }
 
                 if (typeChanged) {
                     ConnectTypePrefs.setType(activity, newType)
                     Logger.d(TAG, "connect type changed to $newType")
+                }
+                if (usbLaunchChanged) {
+                    ConnectTypePrefs.setUsbAutoLaunch(activity, newUsbAutoLaunch)
+                    Logger.d(TAG, "usb auto launch changed to $newUsbAutoLaunch")
                 }
                 if (rememberChanged) {
                     ConnectTypePrefs.setRememberGrant(activity, newRemember)
@@ -109,20 +134,47 @@ object ConnectTypeDialog {
         dialog.show()
     }
 
-    private fun updateRememberVisibility(rbUsb: RadioButton, llRemember: LinearLayout) {
-        llRemember.visibility = if (rbUsb.isChecked) View.VISIBLE else View.GONE
+    /**
+     * 「USB拉起APP」依赖「记住授权」：后者未勾选时，前者整行（文字 + 勾选框）置灰不可点，
+     * 并自动取消它的勾选 —— 避免出现「记住授权关、拉起开」这种无意义的组合
+     * （拉起靠的是 activity-alias，它同时也是授权可记住的前提，见 ConnectTypePrefs）。
+     */
+    private fun updateUsbLaunchEnabled(
+        cbRemember: AppCompatCheckBox,
+        cbUsbAutoLaunch: AppCompatCheckBox
+    ) {
+        val enabled = cbRemember.isChecked
+        cbUsbAutoLaunch.isEnabled = enabled
+        // Material 规范的 disabled 透明度，让文字与勾选框一起变灰
+        cbUsbAutoLaunch.alpha = if (enabled) 1f else DISABLED_ALPHA
+        if (!enabled) {
+            cbUsbAutoLaunch.isChecked = false
+        }
+    }
+
+    /** 两项 USB 相关的勾选只在选中 USB 时显示（WIFI / 直连没有插线这个概念） */
+    private fun updateUsbOptionsVisibility(
+        rbUsb: RadioButton,
+        llUsbAutoLaunch: LinearLayout,
+        llRemember: LinearLayout
+    ) {
+        val visibility = if (rbUsb.isChecked) View.VISIBLE else View.GONE
+        llUsbAutoLaunch.visibility = visibility
+        llRemember.visibility = visibility
     }
 
     /**
-     * 直连权限申请：通过后再应用「连接方式」与「记住授权」两个待生效的值。
+     * 直连权限申请：通过后再应用「连接方式」「USB拉起APP」「记住授权」三个待生效的值。
      */
     private fun requestDirectPermissionAndApply(
         activity: AppCompatActivity,
         type: Int,
+        usbAutoLaunch: Boolean,
         remember: Boolean,
         onChanged: Runnable
     ) {
         val currentType = ConnectTypePrefs.currentType()
+        val currentUsbAutoLaunch = ConnectTypePrefs.isUsbAutoLaunch(activity)
         val currentRemember = ConnectTypePrefs.isRememberGrant(activity)
         PermissionX.init(activity)
             .permissions(
@@ -134,6 +186,10 @@ object ConnectTypeDialog {
                     if (type != currentType) {
                         ConnectTypePrefs.setType(activity, type)
                         Logger.d(TAG, "connect type changed to $type (after permission)")
+                    }
+                    if (usbAutoLaunch != currentUsbAutoLaunch) {
+                        ConnectTypePrefs.setUsbAutoLaunch(activity, usbAutoLaunch)
+                        Logger.d(TAG, "usb auto launch changed to $usbAutoLaunch (after permission)")
                     }
                     if (remember != currentRemember) {
                         ConnectTypePrefs.setRememberGrant(activity, remember)

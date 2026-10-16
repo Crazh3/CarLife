@@ -41,7 +41,10 @@ import com.baidu.carlifevehicle.usb.UsbAttachPolicy
 import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CarlifeUtil
 import com.baidu.carlifevehicle.util.CommonParams
+import com.baidu.carlifevehicle.util.DisplayModeApplier
+import com.baidu.carlifevehicle.util.DisplayModePrefs
 import com.baidu.carlifevehicle.util.PreferenceUtil
+import com.baidu.carlifevehicle.util.ThemeModeReporter
 import com.baidu.carlifevehicle.view.CarlifeMessageDialog
 import com.permissionx.guolindev.PermissionX
 
@@ -82,6 +85,9 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
             return
         }
         setContentView(R.layout.activity_main)
+        // 「显示方式」：系统默认 / 沉浸式全屏（见 DisplayModePrefs）。
+        // 必须在启动时应用一次，否则上次设置的沉浸式在进程重启后不生效。
+        DisplayModeApplier.apply(this, DisplayModePrefs.isImmersiveFullscreen(this))
         mSurfaceView = findViewById(R.id.video_surface_view)
 
         mRootView = findViewById(R.id.root_view)
@@ -123,6 +129,12 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
             500
         )
 
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 「显示方式」在别处（设置页弹窗、系统栏被用户滑动唤出）可能变过，回到前台重新应用一次
+        DisplayModeApplier.apply(this, DisplayModePrefs.isImmersiveFullscreen(this))
     }
 
     fun getCarLifeVehicleFragmentManager(): CarLifeFragmentManager? {
@@ -222,6 +234,9 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
 
     override fun onConnectionEstablished(context: CarLifeContext) {
         MsgHandlerCenter.dispatchMessage(CommonParams.MSG_CONNECT_STATUS_ESTABLISHED)
+        // 连接刚建立必须推一次当前深浅色：手机端只能被动接收，不推就不知道车机当前主题
+        ThemeModeReporter.onConnectionEstablished()
+        ThemeModeReporter.syncIfNeeded(this, force = true)
     }
 
     override fun onConnectionAttached(context: CarLifeContext) {
@@ -233,6 +248,8 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
 
     override fun onConnectionDetached(context: CarLifeContext) {
         MsgHandlerCenter.dispatchMessage(CommonParams.MSG_CONNECT_STATUS_DISCONNECTED)
+        // 断开后复位，下次连上重新推一次
+        ThemeModeReporter.onConnectionDetached()
     }
 
     override fun onReceiveMessage(context: CarLifeContext, message: CarLifeMessage): Boolean {

@@ -1,0 +1,5 @@
+package com.baidu.carlife.protobuf;
+message CarlifeThemeChange
+{
+	required int32 themeModes = 1;
+}

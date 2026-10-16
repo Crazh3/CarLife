@@ -294,6 +294,10 @@ object ServiceTypes {
     const val MSG_VEHICLE_CONTROL_INFO_VALUE_ON = 0x0001
     const val MSG_VEHICLE_CONTROL_INFO_VALUE_OFF = 0x0002
 
+    // 主题同步：车机把当前深浅色（昼夜）模式发给手机端
+    // payload 为 CarlifeThemeChangeProto.CarlifeThemeChange（themeModes: 0=白天 1=夜间）
+    const val MSG_CMD_HU_THEME_CHANGE = 0x00018078
+
     const val MSG_VEHICLE_CONTROL_INFO_VALUE_KMH = 0x0001
     const val MSG_VEHICLE_CONTROL_INFO_VALUE_MPH = 0x0002
 

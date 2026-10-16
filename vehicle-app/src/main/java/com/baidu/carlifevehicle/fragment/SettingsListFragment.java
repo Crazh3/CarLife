@@ -29,11 +29,17 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.baidu.carlife.sdk.CarLifeContext;
 import com.baidu.carlife.sdk.util.Logger;
 import com.baidu.carlifevehicle.R;
+import com.baidu.carlifevehicle.util.AudioChannelDialog;
+import com.baidu.carlifevehicle.util.AudioChannelPrefs;
+import com.baidu.carlifevehicle.util.AudioTransmissionDialog;
 import com.baidu.carlifevehicle.util.ConnectTypeDialog;
 import com.baidu.carlifevehicle.util.ConnectTypePrefs;
+import com.baidu.carlifevehicle.util.DisplayModeDialog;
+import com.baidu.carlifevehicle.util.DisplayModePrefs;
+import com.baidu.carlifevehicle.util.ThemeSyncDialog;
+import com.baidu.carlifevehicle.util.ThemeSyncPrefs;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,8 +49,11 @@ import java.util.List;
  *
  * 当前条目：
  *  - 连接方式：USB / WIFI / 直连，点击弹窗选择（见 {@link ConnectTypeDialog}）
- *  - 记住授权：**仅当连接方式为 USB 时出现**，控制 USB 授权弹窗能否勾选「一律允许」
- *    （见 {@link ConnectTypePrefs#applyRememberGrant}）
+ *    （「USB拉起APP」开关放在该弹窗内、选中 USB 时才显示，不再单独占一行）
+ *  - 显示方式：系统默认 / 沉浸式全屏（见 {@link DisplayModeDialog}）
+ *  - 音频传输通道：互联通道 / 蓝牙通道（见 {@link AudioTransmissionDialog}）
+ *  - 媒体 / 导航音频通道：**仅当音频走「互联通道」时出现**（见 {@link AudioChannelDialog}）
+ *  - 主题同步：把车机深浅色同步给手机端（见 {@link ThemeSyncDialog}）
  */
 public class SettingsListFragment extends BaseFragment {
 
@@ -54,7 +63,11 @@ public class SettingsListFragment extends BaseFragment {
 
     /** 条目 id */
     private static final int ITEM_CONNECT_TYPE = 0;
-    private static final int ITEM_REMEMBER_GRANT = 1;
+    private static final int ITEM_DISPLAY_MODE = 1;
+    private static final int ITEM_AUDIO_TRANSMISSION = 3;
+    private static final int ITEM_AUDIO_MEDIA_CHANNEL = 4;
+    private static final int ITEM_AUDIO_NAVI_CHANNEL = 5;
+    private static final int ITEM_THEME_SYNC = 6;
 
     /** 当前可见的条目（顺序即列表顺序，由 refreshItems 决定） */
     private final List<Integer> mVisibleItems = new ArrayList<>();
@@ -120,14 +133,19 @@ public class SettingsListFragment extends BaseFragment {
     }
 
     /**
-     * 按当前连接方式刷新可见条目：「记住授权」只在 USB 下出现。
+     * 按当前设置刷新可见条目：
+     *  - 「媒体 / 导航音频通道」只在音频走「互联通道」时出现（蓝牙通道下车机不接管音频）。
      */
     private void refreshItems() {
         mVisibleItems.clear();
         mVisibleItems.add(ITEM_CONNECT_TYPE);
-        if (ConnectTypePrefs.INSTANCE.currentType() == CarLifeContext.CONNECTION_TYPE_AOA) {
-            mVisibleItems.add(ITEM_REMEMBER_GRANT);
+        mVisibleItems.add(ITEM_DISPLAY_MODE);
+        mVisibleItems.add(ITEM_AUDIO_TRANSMISSION);
+        if (AudioChannelPrefs.INSTANCE.channelSettingsEnabled(mActivity)) {
+            mVisibleItems.add(ITEM_AUDIO_MEDIA_CHANNEL);
+            mVisibleItems.add(ITEM_AUDIO_NAVI_CHANNEL);
         }
+        mVisibleItems.add(ITEM_THEME_SYNC);
         if (mAdapter != null) {
             mAdapter.notifyDataSetChanged();
         }
@@ -150,11 +168,46 @@ public class SettingsListFragment extends BaseFragment {
                     Logger.e(TAG, "activity is not AppCompatActivity, can not show dialog");
                 }
                 break;
-            case ITEM_REMEMBER_GRANT:
-                boolean enabled = !ConnectTypePrefs.INSTANCE.isRememberGrant(mActivity);
-                ConnectTypePrefs.INSTANCE.setRememberGrant(mActivity, enabled);
-                Logger.d(TAG, "remember grant changed to " + enabled);
+            case ITEM_DISPLAY_MODE:
+            case ITEM_AUDIO_TRANSMISSION:
+            case ITEM_AUDIO_MEDIA_CHANNEL:
+            case ITEM_AUDIO_NAVI_CHANNEL:
+            case ITEM_THEME_SYNC:
+                showSettingsDialog(mVisibleItems.get(position));
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** 需要弹窗的条目：显示方式 / 音频传输通道 / 媒体·导航音频通道 / 主题同步 */
+    private void showSettingsDialog(int item) {
+        if (!(mActivity instanceof AppCompatActivity)) {
+            Logger.e(TAG, "activity is not AppCompatActivity, can not show dialog");
+            return;
+        }
+        AppCompatActivity activity = (AppCompatActivity) mActivity;
+        Runnable onChanged = new Runnable() {
+            @Override
+            public void run() {
                 refreshItems();
+            }
+        };
+        switch (item) {
+            case ITEM_DISPLAY_MODE:
+                DisplayModeDialog.INSTANCE.show(activity, onChanged);
+                break;
+            case ITEM_AUDIO_TRANSMISSION:
+                AudioTransmissionDialog.INSTANCE.show(activity, onChanged);
+                break;
+            case ITEM_AUDIO_MEDIA_CHANNEL:
+                AudioChannelDialog.INSTANCE.show(activity, AudioChannelDialog.KIND_MEDIA, onChanged);
+                break;
+            case ITEM_AUDIO_NAVI_CHANNEL:
+                AudioChannelDialog.INSTANCE.show(activity, AudioChannelDialog.KIND_NAVI, onChanged);
+                break;
+            case ITEM_THEME_SYNC:
+                ThemeSyncDialog.INSTANCE.show(activity, onChanged);
                 break;
             default:
                 break;
@@ -207,12 +260,38 @@ public class SettingsListFragment extends BaseFragment {
                     holder.value.setText(ConnectTypePrefs.INSTANCE.typeName(mActivity));
                     holder.more.setVisibility(View.VISIBLE);
                     break;
-                case ITEM_REMEMBER_GRANT:
-                    holder.title.setText(R.string.connect_type_remember_title);
-                    holder.value.setText(ConnectTypePrefs.INSTANCE.isRememberGrant(mActivity)
+                case ITEM_DISPLAY_MODE:
+                    holder.title.setText(R.string.display_mode_title);
+                    holder.value.setText(DisplayModePrefs.INSTANCE.modeNameRes(
+                            DisplayModePrefs.INSTANCE.currentMode(mActivity)));
+                    holder.more.setVisibility(View.VISIBLE);
+                    break;
+                case ITEM_AUDIO_TRANSMISSION:
+                    holder.title.setText(R.string.audio_transmission_title);
+                    holder.value.setText(AudioChannelPrefs.INSTANCE.transmissionNameRes(
+                            AudioChannelPrefs.INSTANCE.transmissionMode(mActivity)));
+                    holder.more.setVisibility(View.VISIBLE);
+                    break;
+                case ITEM_AUDIO_MEDIA_CHANNEL:
+                    holder.title.setText(R.string.audio_media_channel_title);
+                    holder.value.setText(AudioChannelPrefs.INSTANCE.channelName(mActivity,
+                            AudioChannelPrefs.INSTANCE.mediaChannel(mActivity),
+                            AudioChannelPrefs.INSTANCE.mediaLegacyApi(mActivity)));
+                    holder.more.setVisibility(View.VISIBLE);
+                    break;
+                case ITEM_AUDIO_NAVI_CHANNEL:
+                    holder.title.setText(R.string.audio_navi_channel_title);
+                    holder.value.setText(AudioChannelPrefs.INSTANCE.channelName(mActivity,
+                            AudioChannelPrefs.INSTANCE.naviChannel(mActivity),
+                            AudioChannelPrefs.INSTANCE.naviLegacyApi(mActivity)));
+                    holder.more.setVisibility(View.VISIBLE);
+                    break;
+                case ITEM_THEME_SYNC:
+                    holder.title.setText(R.string.theme_sync_title);
+                    holder.value.setText(ThemeSyncPrefs.INSTANCE.isEnabled(mActivity)
                             ? R.string.connect_type_remember_on
                             : R.string.connect_type_remember_off);
-                    holder.more.setVisibility(View.GONE);
+                    holder.more.setVisibility(View.VISIBLE);
                     break;
                 default:
                     break;

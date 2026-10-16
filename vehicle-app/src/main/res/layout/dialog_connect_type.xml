@@ -78,4 +78,22 @@
             android:textColor="?android:attr/textColorPrimary"
             android:text="@string/connect_type_remember_title" />
     </LinearLayout>
+
+    <!-- 「USB拉起APP」依赖「记住授权」：后者未勾选时整行置灰不可点，见 ConnectTypeDialog -->
+    <LinearLayout
+        android:id="@+id/ll_usb_auto_launch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <androidx.appcompat.widget.AppCompatCheckBox
+            android:id="@+id/cb_usb_auto_launch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:buttonTint="@color/teal_200"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/connect_type_usb_launch_title" />
+    </LinearLayout>
 </LinearLayout>

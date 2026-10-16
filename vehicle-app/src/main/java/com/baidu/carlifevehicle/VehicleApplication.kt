@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.res.Configuration
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
@@ -16,15 +17,17 @@ import com.baidu.carlife.sdk.Configs.*
 import com.baidu.carlife.sdk.Constants
 import com.baidu.carlife.sdk.Constants.TAG
 import com.baidu.carlife.sdk.receiver.CarLife
-import com.baidu.carlife.sdk.internal.DisplaySpec
 import com.baidu.carlifevehicle.audio.recorder.VoiceManager
 import com.baidu.carlifevehicle.audio.recorder.VoiceMessageHandler
 import com.baidu.carlifevehicle.protocol.ControllerHandler
 import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CommonParams.CONNECT_TYPE_SHARED_PREFERENCES
 import com.baidu.carlife.sdk.receiver.transport.aoa.UsbAccessoryStarter
+import com.baidu.carlifevehicle.util.AudioChannelPrefs
 import com.baidu.carlifevehicle.util.ConnectTypePrefs
+import com.baidu.carlifevehicle.util.DisplaySpecConfig
 import com.baidu.carlifevehicle.util.PreferenceUtil
+import com.baidu.carlifevehicle.util.ThemeModeReporter
 
 class VehicleApplication : Application() {
 
@@ -45,35 +48,40 @@ class VehicleApplication : Application() {
         app = this
 
         PreferenceUtil.getInstance().init(this)
-        // 「记住授权」（设置-连接方式-USB）落到系统组件状态，见 ConnectTypePrefs：
-        // 首次安装默认关闭（不记住授权）；已有配置则沿用上次的值，
+        // 「USB拉起APP」与「记住授权」（设置-连接方式-USB 弹窗内两个勾选）落到系统组件状态，
+        // 见 ConnectTypePrefs：两者默认关闭；已有配置则沿用上次的值，
         // 保证进程启动后组件状态与设置一致（覆盖安装/升级后也以设置里的值为准）。
+        ConnectTypePrefs.applyUsbAutoLaunch(this, ConnectTypePrefs.isUsbAutoLaunch(this))
         ConnectTypePrefs.applyRememberGrant(this, ConnectTypePrefs.isRememberGrant(this))
-        // 进程启动时清掉"已强制 AOA_START_ACCESSORY 重初始化的设备"集合，
-        // 这样本次 App 启动对每个手机都会做一次强制重枚举（修复手机端 CarLife app
-        // 没监听 AOA bulk 端点的问题）。详见 UsbAccessoryStarter.forceReInitDevices。
+        // 进程启动时清掉"已强制 AOA_START_ACCESSORY 重注册身份"的时间记录，
+        // 这样本次 App 启动对每个手机都会做一次强制重注册（修复手机端 CarLife app
+        // 没监听 AOA bulk 端点的问题）。详见 UsbAccessoryStarter.forceReInitTimes。
         UsbAccessoryStarter.resetForceReInitState()
         resetUsbDeviceIfNecessary()
         CarlifeConfUtil.getInstance().init()
+        // 把「音频传输通道 / 媒体·导航音频通道」的设置灌入 SDK，
+        // 播放侧（AudioPlayTask / AudioFocusManager）运行时读取，立即生效
+        AudioChannelPrefs.apply(this)
         initReceiver()
         bindVehicleService()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // 系统深浅色（白天 / 夜间）变化 → 同步给手机端（见 ThemeModeReporter）
+        ThemeModeReporter.syncIfNeeded(this)
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun initReceiver() {
 
         /**
-         * 获取屏幕的宽高，默认采用16：9的分辨率
-         * 如车厂为宽屏车机，车厂可自定义修改为8：3
+         * 投屏分辨率：默认按车机屏幕真实宽高下发（见 DisplaySpecConfig），
+         * 保证与屏幕比例一致，避免黑边；设置页可手动指定 1080P/720P/576P/W480P
          */
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
-        val displaySpec = DisplaySpec(
-            this,
-            screenWidth.coerceAtLeast(screenHeight).coerceAtMost(1920),
-            screenWidth.coerceAtMost(screenHeight).coerceAtMost(1080),
-            30
-        )
+        val displaySpec = DisplaySpecConfig.build(this)
 
         /**
          * 连接方式默认AOA连接
@@ -104,7 +112,7 @@ class VehicleApplication : Application() {
 
         Log.d(
             Constants.TAG,
-            "VehicleApplication initReceiver $screenWidth, $screenHeight $displaySpec"
+            "VehicleApplication initReceiver ${displaySpec.width}x${displaySpec.height} $displaySpec"
         )
 
         /**
