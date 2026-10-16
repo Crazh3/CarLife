@@ -71,6 +71,22 @@ object ConnectTypePrefs {
      */
     private const val KEY_USB_AUTO_LAUNCH = "usb_auto_launch"
 
+    /**
+     * 连接超时时间（秒），**默认 10 秒**，用户在弹窗里用中间输入框或两侧 +/- 调整。
+     *
+     * 作用范围（见 MainFragment 的 mConnectionTask / mProtocolInteractionTask）：
+     *  - 建立连接阶段的超时（超时后首页显示"连接超时"错误态）；
+     *  - 连上之后等待协议交互、投屏画面起来的超时。
+     * USB / WIFI / 直连三种连接方式共用同一个值。
+     *
+     * 读写两端都做 clamp（限制在 [CONNECT_TIMEOUT_MIN_SECONDS, CONNECT_TIMEOUT_MAX_SECONDS]），
+     * 避免手输异常值让定时器拿到 0 或负数。
+     */
+    private const val KEY_CONNECT_TIMEOUT_SECONDS = "connect_timeout_seconds"
+    const val CONNECT_TIMEOUT_DEFAULT_SECONDS = 10
+    const val CONNECT_TIMEOUT_MIN_SECONDS = 1
+    const val CONNECT_TIMEOUT_MAX_SECONDS = 120
+
     /** 中文显示名 */
     fun typeName(type: Int): String = when (type) {
         CarLifeContext.CONNECTION_TYPE_HOTSPOT -> "WIFI"
@@ -169,6 +185,20 @@ object ConnectTypePrefs {
         Logger.d(TAG, "setUsbAutoLaunch $enabled")
         applyUsbAutoLaunch(context, enabled)
     }
+
+    /** 当前连接超时时间（秒），默认 10 秒，返回值已限制在合法区间内 */
+    fun connectTimeoutSeconds(context: Context): Int =
+        prefs(context).getInt(KEY_CONNECT_TIMEOUT_SECONDS, CONNECT_TIMEOUT_DEFAULT_SECONDS)
+            .coerceIn(CONNECT_TIMEOUT_MIN_SECONDS, CONNECT_TIMEOUT_MAX_SECONDS)
+
+    fun setConnectTimeoutSeconds(context: Context, seconds: Int) {
+        val value = seconds.coerceIn(CONNECT_TIMEOUT_MIN_SECONDS, CONNECT_TIMEOUT_MAX_SECONDS)
+        prefs(context).edit().putInt(KEY_CONNECT_TIMEOUT_SECONDS, value).apply()
+        Logger.d(TAG, "setConnectTimeoutSeconds $value")
+    }
+
+    /** 转成毫秒，供 MainFragment 的定时器直接使用 */
+    fun connectTimeoutMs(context: Context): Int = connectTimeoutSeconds(context) * 1000
 
     private fun prefs(context: Context) =
         context.getSharedPreferences("vehicle_settings", Context.MODE_PRIVATE)

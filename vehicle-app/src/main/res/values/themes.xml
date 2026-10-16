@@ -17,6 +17,10 @@
         <item name="android:windowActionBar">false</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowBackground">@drawable/ic_launcher_background</item>
+        <!-- 冷启动的窗口背景必须与启动页 frag_launch 的底色一致（@color/cl_bg_c_main）。
+             原值 @drawable/ic_launcher_background 其实是一张完整的 CarLife+ 启动画面，
+             与启动页（另一套 logo + 版权）不同，于是启动时会先闪一张再切到启动页，看起来像两次启动图。
+             换成纯底色后冷启动到启动页之间没有跳变。 -->
+        <item name="android:windowBackground">@color/cl_bg_c_main</item>
     </style>
 </resources>

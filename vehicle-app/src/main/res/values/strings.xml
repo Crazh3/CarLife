@@ -11,6 +11,8 @@
     <string name="baidu_logo">\@ 2014 Baidu</string>
     <string name="baidu_help"><u>帮助</u></string>
     <string name="baidu_setting"><u>设置</u></string>
+    <!-- 主页顶部栏左侧的「启用服务」总开关：关闭后禁止连接手机 -->
+    <string name="main_service_switch">启用服务</string>
     <!-- main -END -->
 
 
@@ -76,6 +78,9 @@
     <!-- 设置页「连接方式」条目当前值里的简写标记，拼成如 "USB | 记住 | 拉起" -->
     <string name="connect_type_flag_remember">记住</string>
     <string name="connect_type_flag_launch">拉起</string>
+    <!-- 连接超时：标题 + 单位，数值由中间输入框配合两侧 +/- 按钮调整 -->
+    <string name="connect_type_timeout_title">超时时间</string>
+    <string name="connect_type_timeout_unit">秒</string>
     <string name="connect_type_remember_on">开</string>
     <string name="connect_type_remember_off">关</string>
     <!-- 设置-连接方式 -END -->

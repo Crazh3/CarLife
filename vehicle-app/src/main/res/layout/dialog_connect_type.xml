@@ -62,6 +62,72 @@
         android:layout_marginBottom="8dp"
         android:background="@color/cl_text_c_btn_dialog" />
 
+    <!-- 连接超时时间（秒）：**全局设置**，与连接方式无关，USB / WIFI / 直连三种方式下都显示。
+         中间是数字输入框，两侧 +/- 按钮，见 ConnectTypeDialog -->
+    <LinearLayout
+        android:id="@+id/ll_timeout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/connect_type_timeout_title" />
+
+        <Button
+            android:id="@+id/btn_timeout_minus"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:textSize="22sp"
+            android:text="-" />
+
+        <EditText
+            android:id="@+id/et_timeout"
+            android:layout_width="64dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLength="3"
+            android:selectAllOnFocus="true"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/btn_timeout_plus"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:textSize="22sp"
+            android:text="+" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/connect_type_timeout_unit" />
+    </LinearLayout>
+
+    <!-- 分隔「超时时间」与下方 USB 专属选项；非 USB 时那两项整体隐藏，本线必须跟着隐藏，
+         否则会留下一条孤零零的线。见 ConnectTypeDialog.updateUsbOptionsVisibility -->
+    <View
+        android:id="@+id/v_usb_options_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@color/cl_text_c_btn_dialog" />
+
     <LinearLayout
         android:id="@+id/ll_remember_grant"
         android:layout_width="match_parent"

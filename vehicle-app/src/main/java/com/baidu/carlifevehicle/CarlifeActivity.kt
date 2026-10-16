@@ -8,9 +8,7 @@ import android.os.Message
 import android.text.TextUtils
 import android.view.Surface
 import android.view.SurfaceHolder
-import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat.requestPermissions
@@ -44,17 +42,17 @@ import com.baidu.carlifevehicle.util.CommonParams
 import com.baidu.carlifevehicle.util.DisplayModeApplier
 import com.baidu.carlifevehicle.util.DisplayModePrefs
 import com.baidu.carlifevehicle.util.PreferenceUtil
+import com.baidu.carlifevehicle.util.ServiceSwitchPrefs
 import com.baidu.carlifevehicle.util.ThemeModeReporter
 import com.baidu.carlifevehicle.view.CarlifeMessageDialog
 import com.permissionx.guolindev.PermissionX
 
 class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
-    TransportListener, View.OnClickListener, OnPhoneStateChangeListener, WirlessStatusListener {
+    TransportListener, OnPhoneStateChangeListener, WirlessStatusListener {
     public var mIsConnectException = false
     private lateinit var mSurfaceView: RemoteDisplayGLView
     private var mSurface: Surface? = null
     private lateinit var mRootView: ViewGroup
-    private lateinit var btHardKeyCode: Button
     private lateinit var mVehicleControlHandler: TransportListener
     private lateinit var mPhoneModule: CarLifeModule
     private lateinit var mMusicModule: CarLifeModule
@@ -97,9 +95,6 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
         BaseFragment.initBeforeAll(this)
         mCarLifeFragmentManager!!.showFragment(LaunchFragment.getInstance())
 
-        btHardKeyCode = findViewById(R.id.bt_hard)
-        btHardKeyCode.setOnClickListener(this)
-
         mPhoneModule = PhoneModule(CarLife.receiver(), this)
         mMusicModule = MusicModule(CarLife.receiver())
         mNavModule = NavModule(CarLife.receiver())
@@ -119,8 +114,6 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
         })
 
         requestPermission()
-
-        ControlTestWindow.getInstance().init(this@CarlifeActivity, mRootView)
 
         mMainActivityHandler = MsgMainActivityHandler()
         MsgHandlerCenter.registerMessageHandler(mMainActivityHandler)
@@ -260,19 +253,6 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
             }
         }
         return false
-    }
-
-    private var numClickCount = 0
-
-    override fun onClick(view: View?) {
-        when (view!!.id) {
-            R.id.bt_hard -> {
-                if (++numClickCount == 3) {
-                    ControlTestWindow.getInstance().displayWindow()
-                    numClickCount = 0
-                }
-            }
-        }
     }
 
     private fun openExitAppDialogOnReadConfFail() {
@@ -545,6 +525,11 @@ class CarlifeActivity : AppCompatActivity(), ConnectProgressListener,
         CarLife.receiver().initStatisticsInfo(CommonParams.vehicleChannel, "12345678")
         mIsInitConfig = true;
 
+        // 主页「服务」总开关关闭时不连接手机（用户改设置时临时停掉），见 ServiceSwitchPrefs。
+        // SDK 完成初始化后会自己开始扫描/连接，所以要在配置下发之后按开关状态停一次。
+        if (!ServiceSwitchPrefs.isEnabled(this)) {
+            CarLife.receiver().stopConnect()
+        }
     }
 
     fun saveConnectStatus(status: Boolean) {

@@ -24,9 +24,11 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.baidu.carlife.sdk.receiver.CarLife;
@@ -36,6 +38,8 @@ import com.baidu.carlifevehicle.R;
 import com.baidu.carlifevehicle.message.MsgBaseHandler;
 import com.baidu.carlifevehicle.message.MsgHandlerCenter;
 import com.baidu.carlifevehicle.util.CommonParams;
+import com.baidu.carlifevehicle.util.ConnectTypePrefs;
+import com.baidu.carlifevehicle.util.ServiceSwitchPrefs;
 import com.baidu.carlifevehicle.view.LoadingProgressBar;
 
 import java.util.Timer;
@@ -51,6 +55,8 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     private TextView mHelpBtn = null;
     private TextView mSettingBtn = null;
     private ImageButton mExitAppBtn = null;
+    /** 顶部栏左侧的「服务」总开关，关闭后禁止连接手机（见 ServiceSwitchPrefs） */
+    private Switch mServiceSwitch = null;
     private Timer mTimer = null;
     private TimerTask mTimerTask = null;
     public static int connectTimeoutMs = 20 * 1000;
@@ -72,7 +78,8 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     private static MainFragment mMainFragment;
 
     private boolean isAoaNotSupportADBNotOpen = false;
-    private boolean isNeedShowHelpMainFragment = true;
+    /** 主页是否还没做过首次初始化（首次真正显示时才开始连接） */
+    private boolean isFirstShowMainFragment = true;
 
     public static MainFragment getInstance() {
         if (mMainFragment == null) {
@@ -91,13 +98,11 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     public void onHiddenChanged(boolean hidden) {
         Logger.d(TAG, "onHiddenChanged, hidden: " + hidden);
         super.onHiddenChanged(hidden);
-        if (isNeedShowHelpMainFragment && !hidden) {
-            MsgHandlerCenter.dispatchMessageDelay(CommonParams.MSG_MAIN_DISPLAY_HELP_MAIN_FRAGMENT, 30 * 1000);
-            // 主页首次显示时才开始去执行连接
+        if (isFirstShowMainFragment && !hidden) {
+            // 主页首次显示时才开始去执行连接。
+            // 原本这里还会延时 30s 自动跳转帮助页，按需求已去掉：帮助页只能点顶部「帮助」按钮进入。
             beginConnect();
-            isNeedShowHelpMainFragment = false;
-        } else if (hidden && mHandler.hasMessages(CommonParams.MSG_MAIN_DISPLAY_HELP_MAIN_FRAGMENT)) {
-            MsgHandlerCenter.removeMessages(CommonParams.MSG_MAIN_DISPLAY_HELP_MAIN_FRAGMENT);
+            isFirstShowMainFragment = false;
         }
     }
 
@@ -120,6 +125,28 @@ public class MainFragment extends BaseFragment implements OnClickListener {
         mSettingBtn.setOnClickListener(this);
         mExitAppBtn = (ImageButton) mContentView.findViewById(R.id.exit_img_btn);
         mExitAppBtn.setOnClickListener(this);
+        mServiceSwitch = (Switch) mContentView.findViewById(R.id.main_service_switch);
+        // frag_main.xml 有 layout/ 与 layout-hdpi/ 两个版本，都要有 main_service_switch。
+        // 万一某个变体漏加了，这里只丢开关功能，不能让主页崩掉（也不能打断后面的初始化）。
+        if (mServiceSwitch != null) {
+            mServiceSwitch.setChecked(ServiceSwitchPrefs.INSTANCE.isEnabled(mActivity));
+            mServiceSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    ServiceSwitchPrefs.INSTANCE.setEnabled(mActivity, isChecked);
+                    if (isChecked) {
+                        // 恢复连接：transports 为空时 connect() 会自动 configConnectType() 重建
+                        CarLife.receiver().connect();
+                    } else {
+                        // 停止连接：终止并清空所有 transport，之后不会自动重连
+                        CarLife.receiver().stopConnect();
+                    }
+                    Logger.d(TAG, "service switch -> " + isChecked);
+                }
+            });
+        } else {
+            Logger.e(TAG, "main_service_switch not found in this layout variant!");
+        }
         if (CommonParams.vehicleChannel.equals(CommonParams.VEHICLE_CHANNEL_EL_AFTER_MARKET)) {
             mRetryBtn.setVisibility(View.GONE);
             mRetryBtn = null;
@@ -128,8 +155,9 @@ public class MainFragment extends BaseFragment implements OnClickListener {
             mRetryBtn.setOnClickListener(this);
         }
 
-        connectTimeoutMs = CONNECT_TIMEOUT_MS_USB;
-        Logger.d(TAG, "set timeout: " + CONNECT_TIMEOUT_MS_USB);
+        // 超时时间取设置项（默认 10 秒，弹窗里可调），见 ConnectTypePrefs
+        connectTimeoutMs = ConnectTypePrefs.INSTANCE.connectTimeoutMs(mActivity);
+        Logger.d(TAG, "set timeout: " + connectTimeoutMs);
         return mContentView;
     }
 
@@ -137,6 +165,9 @@ public class MainFragment extends BaseFragment implements OnClickListener {
         mHelpBtn.setVisibility(View.GONE);
         mSettingBtn.setVisibility(View.GONE);
         mExitAppBtn.setVisibility(View.GONE);
+        if (mServiceSwitch != null) {
+            mServiceSwitch.setVisibility(View.GONE);
+        }
         RelativeLayout.LayoutParams params = null;
 
         params = (RelativeLayout.LayoutParams) mImgView.getLayoutParams();
@@ -175,6 +206,13 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     }
 
     private void beginConnect() {
+        // 「服务」开关关闭时禁止连接手机（用户改设置时临时停掉），见 ServiceSwitchPrefs
+        if (!ServiceSwitchPrefs.INSTANCE.isEnabled(mActivity)) {
+            Logger.d(TAG, "service switch is off, skip connect");
+            return;
+        }
+        // 每次连接都重新读一次设置值，这样改完超时不用重进主页
+        connectTimeoutMs = ConnectTypePrefs.INSTANCE.connectTimeoutMs(mActivity);
         CarLife.receiver().connect();
         TimerUtils.INSTANCE.schedule(mConnectionTask, connectTimeoutMs, connectTimeoutMs);
     }
@@ -296,12 +334,6 @@ public class MainFragment extends BaseFragment implements OnClickListener {
                         mImgView.setImageDrawable(getResources().getDrawable(R.drawable.car_ic_qr));
                         TimerUtils.INSTANCE.stop(mProtocolInteractionTask);
                         break;
-                    case CommonParams.MSG_MAIN_DISPLAY_HELP_MAIN_FRAGMENT:
-                        Logger.d(TAG, "showFragment(HelpMainFragment.getInstance()");
-                        if (mFragmentManager != null) {
-                            mFragmentManager.showFragment(HelpMainFragment.getInstance());
-                        }
-                        break;
                     default:
                         break;
                 }
@@ -326,7 +358,6 @@ public class MainFragment extends BaseFragment implements OnClickListener {
             addMsg(CommonParams.MSG_CONNECT_FAIL_AUTHEN_FAILED);
 
             addMsg(CommonParams.MSG_CONNECT_CHANGE_PROGRESS_NUMBER);
-            addMsg(CommonParams.MSG_MAIN_DISPLAY_HELP_MAIN_FRAGMENT);
 
             addMsg(CommonParams.MSG_CMD_VIDEO_ENCODER_START);
         }
