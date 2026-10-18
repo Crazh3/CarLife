@@ -113,7 +113,7 @@ object AudioChannelDialog {
                 selectedChannel = value
                 renderGrid(rbLegacy.isChecked)
                 // 与官方一致：点一下就用这个通道播一段试听音，方便判断车机上哪条通道出声
-                AudioChannelPreview.play(activity, rbLegacy.isChecked, value)
+                AudioChannelPreview.play(activity, rbLegacy.isChecked, value, !isMedia)
             }
             val lp = GridLayout.LayoutParams(
                 GridLayout.spec(GridLayout.UNDEFINED),

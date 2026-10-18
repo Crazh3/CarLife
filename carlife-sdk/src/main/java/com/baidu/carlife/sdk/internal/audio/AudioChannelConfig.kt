@@ -3,6 +3,7 @@ package com.baidu.carlife.sdk.internal.audio
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.os.Build
+import android.util.Log
 import com.baidu.carlife.sdk.util.annotations.DoNotStrip
 
 /**
@@ -98,4 +99,76 @@ object AudioChannelConfig {
         CHANNEL_VR -> vrRequestFocus
         else -> mediaRequestFocus
     }
+
+    // ---------------- 通道值 → AudioAttributes ----------------
+
+    /** 该路音频在「新版接口」下的默认 usage */
+    fun defaultUsageFor(stream: Int): Int = when (stream) {
+        CHANNEL_NAVI -> AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+        else -> AudioAttributes.USAGE_MEDIA
+    }
+
+    /** 新版接口：通道值就是 usage */
+    fun attributesForUsage(usage: Int): AudioAttributes =
+        AudioAttributes.Builder()
+            .setUsage(usage)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+
+    /**
+     * 旧版接口：通道值是 streamType —— 与 `MediaPlayer.setAudioStreamType()` /
+     * 旧版 `AudioTrack(streamType, ...)` 走同一套转换（`AudioAttributes.setLegacyStreamType`）。
+     *
+     * 平台不认这个值（例如旧版下填了 12 / 14 这类 usage 数值）时抛
+     * `IllegalArgumentException`，返回 null 让调用方兜底。
+     */
+    fun attributesForLegacyOrNull(streamType: Int): AudioAttributes? = try {
+        AudioAttributes.Builder().setLegacyStreamType(streamType).build()
+    } catch (e: IllegalArgumentException) {
+        Log.w(TAG, "invalid legacy streamType $streamType: $e")
+        null
+    }
+
+    /**
+     * 播放 / 试听 / 焦点请求统一使用的一份 [AudioAttributes]。
+     *
+     * 之前三者各自解析通道值（播放侧自己 new AudioAttributes、试听用过时的
+     * `MediaPlayer.setAudioStreamType`），同一个设置值解析结果不一致，
+     * 于是出现「弹窗里试听是这个通道、真正导航播报走的却是另一条通道」。
+     *
+     * @param legacyApi 是否旧版接口
+     * @param value     设置里的通道值（旧版=streamType，新版=usage）
+     * @param stream    音频分组，仅用于兜底时取该路的默认 usage
+     */
+    fun attributes(legacyApi: Boolean, value: Int, stream: Int): AudioAttributes {
+        // 旧版：channelValue 是 streamType，交给平台按 legacy 规则映射成 usage；
+        // 平台不认这个值就退回该路音频的默认 usage（不能退回 STREAM_MUSIC 就完事，
+        // 那样会和「试听」解析出来的结果不一致）。
+        if (legacyApi) {
+            attributesForLegacyOrNull(value)?.let { return it }
+        } else {
+            try {
+                return attributesForUsage(value)
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "invalid usage $value for stream $stream: $e")
+            }
+        }
+        return attributesForUsage(defaultUsageFor(stream))
+    }
+
+    /** 按当前生效设置解析 [attributes] */
+    fun attributes(stream: Int): AudioAttributes =
+        attributes(legacyApi(stream), channelValue(stream), stream)
+
+    /**
+     * 旧版焦点请求用的 streamType（`AudioManager.requestAudioFocus(listener, streamType, hint)`，
+     * API < 26）：能用设置值就用，否则退回 STREAM_MUSIC，避免传非法值抛异常打断 TTS 播报。
+     */
+    fun legacyStreamType(stream: Int): Int {
+        val value = channelValue(stream)
+        return if (attributesForLegacyOrNull(value) != null) value
+        else AudioManager.STREAM_MUSIC
+    }
+
+    private const val TAG = "AudioChannelConfig"
 }

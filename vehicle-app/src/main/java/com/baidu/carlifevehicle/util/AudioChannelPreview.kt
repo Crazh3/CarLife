@@ -1,10 +1,9 @@
 package com.baidu.carlifevehicle.util
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.os.Build
 import android.widget.Toast
+import com.baidu.carlife.sdk.internal.audio.AudioChannelConfig
 import com.baidu.carlife.sdk.util.Logger
 import com.baidu.carlifevehicle.R
 
@@ -30,7 +29,7 @@ object AudioChannelPreview {
      * @param legacyApi true = 旧版接口（streamType），false = 新版接口（usage）
      * @param channel   「音频通道」的取值（0~23）
      */
-    fun play(context: Context, legacyApi: Boolean, channel: Int) {
+    fun play(context: Context, legacyApi: Boolean, channel: Int, navi: Boolean) {
         stop()
         val mp = MediaPlayer()
         player = mp
@@ -45,17 +44,12 @@ object AudioChannelPreview {
         try {
             val afd = context.resources.openRawResourceFd(R.raw.audio_test)
             afd.use { mp.setDataSource(it.fileDescriptor, it.startOffset, it.length) }
-            if (!legacyApi && Build.VERSION.SDK_INT >= 23) {
-                mp.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(channel)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                mp.setAudioStreamType(channel)
-            }
+            // 与真正播放（AudioPlayTask）/ 焦点请求（AudioFocusManager）同一份解析结果，
+            // 保证「试听听到的通道」就是「导航播报实际走的通道」
+            val stream =
+                if (navi) AudioChannelConfig.CHANNEL_NAVI
+                else AudioChannelConfig.CHANNEL_MEDIA
+            mp.setAudioAttributes(AudioChannelConfig.attributes(legacyApi, channel, stream))
             mp.setOnPreparedListener { it.start() }
             mp.prepareAsync()
             Logger.d(TAG, "play channel=", channel, " legacy=", legacyApi)

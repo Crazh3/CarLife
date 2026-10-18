@@ -1,7 +1,5 @@
 package com.baidu.carlifevehicle.audio.player
 
-import android.media.AudioAttributes
-import android.media.AudioAttributes.*
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
@@ -13,6 +11,7 @@ import com.baidu.carlife.sdk.Configs.CONFIG_SAVE_AUDIO_FILE
 import com.baidu.carlife.sdk.Constants.MSG_CHANNEL_AUDIO
 import com.baidu.carlife.sdk.Constants.MSG_CHANNEL_AUDIO_TTS
 import com.baidu.carlife.sdk.Constants.MSG_CHANNEL_AUDIO_VR
+import com.baidu.carlife.sdk.internal.audio.AudioChannelConfig
 import com.baidu.carlife.sdk.internal.audio.AudioFocusManager
 import com.baidu.carlifevehicle.audio.player.source.AudioParams
 import com.baidu.carlifevehicle.audio.player.source.AudioSource
@@ -39,6 +38,19 @@ class AudioPlayTask(
 ) : Runnable, ConnectionChangeListener, AudioManager.OnAudioFocusChangeListener {
     companion object {
         const val FOCUS_DELAYED = 99
+    }
+
+    /**
+     * 本通道对应的「音频通道设置」分组（见 [AudioChannelConfig]）：
+     * 导航 TTS → [AudioChannelConfig.CHANNEL_NAVI]，VR → CHANNEL_VR，其余（音乐）→ CHANNEL_MEDIA。
+     *
+     * 设置页里改的「版本（新版/旧版）+ 音频通道」就靠它取出来，创建 AudioTrack 时用，
+     * 否则设置改了播放侧也不会生效。
+     */
+    private val audioStreamKey: Int = when (channel) {
+        MSG_CHANNEL_AUDIO_TTS -> AudioChannelConfig.CHANNEL_NAVI
+        MSG_CHANNEL_AUDIO_VR -> AudioChannelConfig.CHANNEL_VR
+        else -> AudioChannelConfig.CHANNEL_MEDIA
     }
 
     // 通道相关协议指令
@@ -457,6 +469,16 @@ class AudioPlayTask(
         context.postMessage(message)
     }
 
+    /**
+     * 按「设置页 → 版本（新版/旧版）+ 音频通道」创建 AudioTrack。
+     *
+     * 关键：这里与「设置弹窗里的试听」（[AudioChannelPreview]）、音频焦点请求
+     * （[AudioFocusManager]）共用 [AudioChannelConfig.attributes] 解析出来的同一份
+     * [android.media.AudioAttributes]。
+     * 之前三者各自解析（播放侧自己拼 usage、试听用过时的 setAudioStreamType、
+     * 且旧版下遇到非 streamType 的值还偷偷退回 STREAM_MUSIC），
+     * 于是出现「弹窗里试听是这个通道、真正导航播报走的却是另一条通道」。
+     */
     private fun createAudioTrack(params: AudioParams, mode: Int): AudioTrack {
         val bufferSize =
             if (mode == AudioTrack.MODE_STATIC)
@@ -467,39 +489,26 @@ class AudioPlayTask(
                 params.audioFormat
             )
 
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            AudioTrack(
-                AudioManager.STREAM_MUSIC,
-                params.sampleRate,
-                params.channelConfig,
-                params.audioFormat,
-                bufferSize,
-                mode
-            )
-        } else {
-            AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(getUsage())
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(params.audioFormat)
-                        .setSampleRate(params.sampleRate)
-                        .setChannelMask(params.channelConfig)
-                        .build()
-                )
-                .setTransferMode(mode)
-                .setBufferSizeInBytes(bufferSize)
-                .build()
-        }
-    }
+        val attributes = AudioChannelConfig.attributes(audioStreamKey)
+        Logger.d(
+            Constants.TAG,
+            "createAudioTrack channel=", channel,
+            " legacy=", AudioChannelConfig.legacyApi(audioStreamKey),
+            " value=", AudioChannelConfig.channelValue(audioStreamKey),
+            " -> usage=", attributes.usage, " contentType=", attributes.contentType
+        )
 
-    private fun getUsage() = when (channel) {
-        MSG_CHANNEL_AUDIO_VR, MSG_CHANNEL_AUDIO -> USAGE_MEDIA
-        MSG_CHANNEL_AUDIO_TTS -> USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
-        else -> USAGE_MEDIA
+        return AudioTrack.Builder()
+            .setAudioAttributes(attributes)
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setEncoding(params.audioFormat)
+                    .setSampleRate(params.sampleRate)
+                    .setChannelMask(params.channelConfig)
+                    .build()
+            )
+            .setTransferMode(mode)
+            .setBufferSizeInBytes(bufferSize)
+            .build()
     }
 }

@@ -1,7 +1,6 @@
 package com.baidu.carlife.sdk.internal.audio
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
@@ -118,23 +117,18 @@ class AudioFocusManager(context: Context) {
     }
 
     private fun doSystemRequestAudioFocus(listener: OnAudioFocusChangeListenerWrapper): Int {
+        // 焦点、播放（AudioPlayTask）、试听（AudioChannelPreview）必须解析成同一份
+        // AudioAttributes，否则「试听是这个通道、真正播报是另一条通道」，见 AudioChannelConfig.attributes
         val result = if (Build.VERSION.SDK_INT >= 26) {
             val focusRequest: AudioFocusRequest = AudioFocusRequest
                     .Builder(listener.focusType)
-                    .setAudioAttributes(AudioAttributes
-                        .Builder()
-                        .setUsage(getUsage(listener.stream))
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build())
+                    .setAudioAttributes(AudioChannelConfig.attributes(listener.stream))
                     .setOnAudioFocusChangeListener(listener)
                     .build()
             listener.audioFocusRequest = focusRequest
             audioManager.requestAudioFocus(focusRequest)
         } else {
-            audioManager.requestAudioFocus(
-                listener,
-                AudioManager.STREAM_MUSIC,
-                listener.focusType)
+            requestLegacyAudioFocus(listener)
         }
 
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
@@ -199,9 +193,19 @@ class AudioFocusManager(context: Context) {
         }
     }
 
-    private fun getUsage(stream:Int) = when (stream) {
-        STREAM_VR, STREAM_MUSIC -> AudioAttributes.USAGE_MEDIA
-        STREAM_NAVI -> AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
-        else -> AudioAttributes.USAGE_MEDIA
-    }
+    /**
+     * API < 26 的旧版焦点请求：streamType 用设置页选的通道值（非法值由
+     * [AudioChannelConfig.legacyStreamType] 兜底，不会把非法值丢给系统）；
+     * 请求失败只记日志，避免一个非法通道值把整个 TTS 播报流程打断。
+     */
+    private fun requestLegacyAudioFocus(listener: OnAudioFocusChangeListenerWrapper): Int =
+        try {
+            audioManager.requestAudioFocus(
+                listener,
+                AudioChannelConfig.legacyStreamType(listener.stream),
+                listener.focusType)
+        } catch (e: Exception) {
+            Logger.e(Constants.TAG, "AudioFocusManager requestAudioFocus failed: $e")
+            AudioManager.AUDIOFOCUS_REQUEST_FAILED
+        }
 }
