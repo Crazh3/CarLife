@@ -10,7 +10,9 @@ import android.content.res.Configuration
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import com.baidu.carlife.sdk.CarLifeContext
 import com.baidu.carlife.sdk.Configs.*
@@ -28,6 +30,7 @@ import com.baidu.carlifevehicle.util.AutoStartPrefs
 import com.baidu.carlifevehicle.util.ConnectTypePrefs
 import com.baidu.carlifevehicle.util.DisplaySpecConfig
 import com.baidu.carlifevehicle.util.PreferenceUtil
+import com.baidu.carlifevehicle.util.ServiceSwitchPrefs
 import com.baidu.carlifevehicle.util.ThemeModeReporter
 
 class VehicleApplication : Application() {
@@ -50,7 +53,7 @@ class VehicleApplication : Application() {
 
         PreferenceUtil.getInstance().init(this)
         // 「USB拉起APP」与「记住授权」（设置-连接方式-USB 弹窗内两个勾选）落到系统组件状态，
-        // 见 ConnectTypePrefs：两者默认关闭；已有配置则沿用上次的值，
+        // 见 ConnectTypePrefs：两者默认开启；已有配置则沿用上次的值，
         // 保证进程启动后组件状态与设置一致（覆盖安装/升级后也以设置里的值为准）。
         ConnectTypePrefs.applyUsbAutoLaunch(this, ConnectTypePrefs.isUsbAutoLaunch(this))
         ConnectTypePrefs.applyRememberGrant(this, ConnectTypePrefs.isRememberGrant(this))
@@ -60,13 +63,52 @@ class VehicleApplication : Application() {
         // 这样本次 App 启动对每个手机都会做一次强制重注册（修复手机端 CarLife app
         // 没监听 AOA bulk 端点的问题）。详见 UsbAccessoryStarter.forceReInitTimes。
         UsbAccessoryStarter.resetForceReInitState()
-        resetUsbDeviceIfNecessary()
         CarlifeConfUtil.getInstance().init()
         // 把「音频传输通道 / 媒体·导航音频通道」的设置灌入 SDK，
         // 播放侧（AudioPlayTask / AudioFocusManager）运行时读取，立即生效
         AudioChannelPrefs.apply(this)
         initReceiver()
         bindVehicleService()
+        // USB 端口复位 + 尽早发起连接，见 [startUsbConnectionAfterReset]。
+        Thread {
+            try {
+                startUsbConnectionAfterReset()
+            } catch (e: Exception) {
+                Log.e(TAG, "usb reset / early connect exception: ", e)
+            }
+        }.start()
+    }
+
+    /**
+     * **尽早开始 USB 扫描 / 授权**（以前要等主页首次显示才 connect()）。
+     *
+     * 主页前面压着 2s 的启动页 LaunchFragment，首次安装还要再过一遍新手引导
+     * （要用户滑到最后一页）——在那之前一句 connect() 都没发过，
+     * 用户感受到的就是"打开 App 之后很久才开始连 USB"（首次连接还要连点两次系统授权框，
+     * 这段等待会被放大）。这里在 Application 初始化一结束就开始扫设备，
+     * 授权框在系统层面弹出来，UI 那边切到主页后只是接着显示连接状态。
+     *
+     * 顺序：先做端口复位（里面有 usb open / releaseInterface / 反射 resetDevice，
+     * 真机上可以到秒级，所以整体放在后台线程，不堵 Application.onCreate），
+     * 复位完再回主线程 connect()，避免两边同时抓同一台设备。
+     */
+    private fun startUsbConnectionAfterReset() {
+        resetUsbDeviceIfNecessary()
+        Handler(Looper.getMainLooper()).post {
+            // 「服务」总开关关闭时不连接，和主页 MainFragment.beginConnect() 的判断保持一致
+            if (!ServiceSwitchPrefs.isEnabled(this)) {
+                Log.d(TAG, "service switch is off, skip early connect")
+                return@post
+            }
+            try {
+                if (!CarLife.receiver().isAttached()) {
+                    Log.d(TAG, "early connect: start scan right after app start")
+                    CarLife.receiver().connect()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "early connect failed: ", e)
+            }
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

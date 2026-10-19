@@ -88,6 +88,19 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     /** 主页是否还没做过首次初始化（首次真正显示时才开始连接） */
     private boolean isFirstShowMainFragment = true;
 
+    /**
+     * 连接没走完时先自己重试几次，次数用完才把界面打成"连接超时"。
+     *
+     * 背景：CarLife.receiver().connect() 以前只在主页**首次显示**时调过一次，
+     * 一旦底层 USB 握手卡住（首次连接要连着弹两次系统授权框，中间任何一步掉队都会卡住），
+     * 应用侧再没有任何补救动作，用户看到的唯一出路就是**重启 App**（用户反馈的原话）。
+     * 这里在超时之前主动补调几次 connect()：它会重建 transport 并重新走
+     * 扫设备 → 申请授权 → openAccessory，正好把掉队的那一环补上。
+     * 次数限制是为了不在界面上无限静默重试，用完则给出「重试」按钮让用户手动再来。
+     */
+    private static final int MAX_CONNECT_AUTO_RETRY = 3;
+    private int connectAutoRetry = 0;
+
     public static MainFragment getInstance() {
         if (mMainFragment == null) {
             mMainFragment = new MainFragment();
@@ -220,6 +233,15 @@ public class MainFragment extends BaseFragment implements OnClickListener {
         }
         // 每次连接都重新读一次设置值，这样改完超时不用重进主页
         connectTimeoutMs = ConnectTypePrefs.INSTANCE.connectTimeoutMs(mActivity);
+        connectAutoRetry = 0;
+        // 连上之前 App 就已经把 USB 握手做完了（见 VehicleApplication.startUsbConnectionAfterReset：
+        // 启动即开始扫描），这时再 connect() 会复位"已 attached"标记、拿同一台设备再开一次连接，
+        // 反而把正在用的连接搅掉 —— 这里只补上等待握手完成的定时器。
+        if (CarLife.receiver().isAttached()) {
+            Logger.d(TAG, "already attached before main page shows, skip re-connect");
+            TimerUtils.INSTANCE.schedule(mProtocolInteractionTask, connectTimeoutMs, connectTimeoutMs);
+            return;
+        }
         CarLife.receiver().connect();
         TimerUtils.INSTANCE.schedule(mConnectionTask, connectTimeoutMs, connectTimeoutMs);
     }
@@ -269,6 +291,7 @@ public class MainFragment extends BaseFragment implements OnClickListener {
             try {
                 switch (msg.what) {
                     case CommonParams.MSG_CONNECT_STATUS_CONNECTED:
+                        connectAutoRetry = 0;
                         TimerUtils.INSTANCE.stop(mConnectionTask);
                         TimerUtils.INSTANCE.schedule(mProtocolInteractionTask, connectTimeoutMs, connectTimeoutMs);
                         break;
@@ -322,6 +345,11 @@ public class MainFragment extends BaseFragment implements OnClickListener {
                         mConnectInfo.setText(R.string.usb_connect_fail_timeout);
                         mRellayoutStatus.setVisibility(View.VISIBLE);
                         mImgView.setImageDrawable(getResources().getDrawable(R.drawable.car_ic_connect_error));
+                        // 留一个不用重启 App 的出口：点「重试」会重新 connect()（重新扫设备、
+                        // 重新申请授权），以前超时之后只能退出重进 App 才能继续
+                        if (mRetryBtn != null) {
+                            mRetryBtn.setVisibility(View.VISIBLE);
+                        }
                         TimerUtils.INSTANCE.stop(mConnectionTask);
                         break;
                     case CommonParams.MSG_FRAGMENT_REFRESH:
@@ -381,11 +409,31 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     private Runnable mConnectionTask = new Runnable() {
         @Override
         public void run() {
+            // 已经连上了就不再是"连接超时"的范畴（App 启动早于主页显示时可能已经完成握手），
+            // 后面的 protocol 握手由 mProtocolInteractionTask 负责超时
+            if (CarLife.receiver().isAttached()) {
+                Logger.d(TAG, "already attached, stop connect timeout task");
+                TimerUtils.INSTANCE.stop(mConnectionTask);
+                return;
+            }
             // 首次连接要弹两次系统授权框（手机普通模式一次、切到 AOA 后新 VID/PID 再一次），
             // 用户点完通常要十几秒，远超默认超时（10s）。还在等 USB 授权时不报超时，
             // 否则界面会在授权途中闪"连接超时"，而底层其实还在正常推进。
             if (isWaitingUsbPermission()) {
                 Logger.d(TAG, "waiting for USB permission, skip connect timeout");
+                return;
+            }
+            // 还没连上但系统授权已经给过了（不再需要弹授权框的情况）：
+            // 先自己重踢几次 connect()，别直接判死，更别让用户只能靠重启 App 恢复。
+            // 已经连上时不能踢：scan() 会复位"已 attached"标记，再去 openAccessory
+            // 会和现有连接抢同一台设备。
+            if (connectAutoRetry < MAX_CONNECT_AUTO_RETRY && !CarLife.receiver().isAttached()) {
+                connectAutoRetry++;
+                Logger.e(TAG, "Carlife connect not finished in " + connectTimeoutMs
+                        + "ms, re-kick connect() #" + connectAutoRetry);
+                if (mActivity != null) {
+                    CarLife.receiver().connect();
+                }
                 return;
             }
             Logger.e(TAG, "Carlife Connect Timeout");

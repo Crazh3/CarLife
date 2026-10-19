@@ -6,11 +6,11 @@ import com.baidu.carlifevehicle.R
 
 /**
  * 「显示方式」偏好：
- *  - 系统默认（[MODE_SYSTEM]，默认值）：沿用主题行为 —— Theme.CarLifeSDK 里的
- *    `android:windowFullscreen` 已经隐藏了状态栏，应用不再做任何额外的系统栏处理，
- *    也就是本项设置出现之前的显示效果。
- *  - 沉浸式全屏（[MODE_IMMERSIVE_FULLSCREEN]）：在系统默认的基础上把导航栏也隐藏，
+ *  - 系统默认（[MODE_SYSTEM]）：沿用主题行为 —— Theme.CarLifeSDK 里的
+ *    `android:windowFullscreen` 已经隐藏了状态栏，应用不再做任何额外的系统栏处理。
+ *  - 沉浸式全屏（[MODE_IMMERSIVE_FULLSCREEN]，**默认值**）：在系统默认的基础上把导航栏也隐藏，
  *    并进入 sticky 沉浸（系统栏被边缘滑动临时唤出后自动收回），界面铺满整个屏幕。
+ *    默认沉浸式是产品要求的出厂效果，车机界面应当铺满整屏。
  *
  * 生效逻辑见 [DisplayModeApplier]，由 CarlifeActivity 在 onCreate / onResume 应用。
  */
@@ -28,9 +28,9 @@ object DisplayModePrefs {
     /** 沉浸式全屏 */
     const val MODE_IMMERSIVE_FULLSCREEN = 1
 
-    /** 默认「系统默认」（首次安装 / 清数据后） */
+    /** 默认「沉浸式全屏」（首次安装 / 清数据后）：产品要求出厂即全屏铺满 */
     fun currentMode(context: Context): Int =
-        settingsPrefs(context).getInt(KEY_DISPLAY_MODE, MODE_SYSTEM)
+        settingsPrefs(context).getInt(KEY_DISPLAY_MODE, MODE_IMMERSIVE_FULLSCREEN)
 
     fun setMode(context: Context, mode: Int) {
         settingsPrefs(context).edit().putInt(KEY_DISPLAY_MODE, mode).apply()

@@ -144,18 +144,19 @@ object ConnectTypePrefs {
     }
 
     /**
-     * 是否记住USB授权，**默认关闭**（首次安装 / 清除应用数据后为关）。
+     * 是否记住USB授权，**默认开启**（首次安装 / 清除应用数据后为开）。
      *
-     * 关 → 系统授权弹窗不带「一律允许」勾选，每次插入都要先授权一次；
-     *      同时插线不会自动拉起 CarLife（需要手动打开本应用）。
-     * 开 → 弹窗带勾选，勾一次以后系统记住该设备，再次插入不再弹窗，
-     *      且插线（App 未启动也一样）系统会直接拉起 CarLife。
+     * 开 → 系统授权弹窗带「一律允许」勾选，勾一次以后系统记住该设备，再次插入不再弹窗，
+     *      且插线（App 未启动也一样）系统会直接拉起 CarLife；
+     * 关 → 弹窗不带勾选，每次插入都要先授权一次；插线也不会自动拉起 CarLife
+     *      （需要手动打开本应用）。
      *
      * 注意：默认值只在首次安装（或清除应用数据）时生效，之后读到的是用户上次的选择；
-     * 清单里两个 USB 匹配组件也声明了 android:enabled="false"，因此首次启动前同样是"不记住"。
+     * 清单里两个 USB 匹配组件声明的 android:enabled="false" 只是初始值，
+     * VehicleApplication 启动时会按这里读到的值重新设置组件状态，两者会保持一致。
      */
     fun isRememberGrant(context: Context): Boolean =
-        prefs(context).getBoolean("usb_grant_remember", false)
+        prefs(context).getBoolean("usb_grant_remember", true)
 
     fun setRememberGrant(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean("usb_grant_remember", enabled).apply()
@@ -169,7 +170,7 @@ object ConnectTypePrefs {
     }
 
     /**
-     * 是否开启「USB拉起APP」，**默认关闭**（首次安装 / 清除应用数据后为关）。
+     * 是否开启「USB拉起APP」，**默认开启**（首次安装 / 清除应用数据后为开）。
      *
      * 开 → 插线时系统直接拉起 CarLife 界面（App 未启动也一样）；
      * 关 → 插线不拉起，需要手动打开本应用。
@@ -178,7 +179,7 @@ object ConnectTypePrefs {
      * 所以本项开启后，USB 授权弹窗也会带上「一律允许」勾选。详见 [USB_ALIAS_CLASS] 的说明。
      */
     fun isUsbAutoLaunch(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_USB_AUTO_LAUNCH, false)
+        prefs(context).getBoolean(KEY_USB_AUTO_LAUNCH, true)
 
     fun setUsbAutoLaunch(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_USB_AUTO_LAUNCH, enabled).apply()

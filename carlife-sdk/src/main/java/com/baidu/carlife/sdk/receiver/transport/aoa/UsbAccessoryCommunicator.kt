@@ -63,6 +63,17 @@ class UsbAccessoryCommunicator(
          */
         private const val AOA_BULK_TRANSFER_RETRY_TIMES = 3
         private const val AOA_BULK_TRANSFER_RETRY_DELAY_MS = 500L
+
+        /**
+         * bulkTransfer 连续返回 0（零长度包，端点没人读/没数据）时最多再试多少次。
+         *
+         * 原来这里写的是 `while (transfered == 0)` 的**死循环**，而且完全不判断
+         * terminate：连接已经断开（usbConnection 被置空）后循环还在跑 ——
+         * 轻则 NPE、重则在 while(true) 里空转把 CPU 打满（readonly 线程 + UI 一起卡住，
+         * 用户看到的就是"点了第一个授权框之后 App 像死机了"）。
+         * 这里给一个上限，超过就把 0 交给上层走正常的 IOException → 重连路径。
+         */
+        private const val MAX_ZERO_LENGTH_TRANSFER = 100
     }
 
     fun openAccessory(): Boolean {
@@ -135,10 +146,21 @@ class UsbAccessoryCommunicator(
     private fun bulkTransferWithRetry(endpoint: android.hardware.usb.UsbEndpoint,
                                       buffer: ByteArray, length: Int, label: String): Int {
         var transfered = 0
+        var zeroCount = 0
         while (transfered == 0) {
-            transfered = usbConnection!!.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
+            val connection = usbConnection
+            if (isTerminated.get() || connection == null) {
+                throw IOException("UsbAccessoryCommunicator terminated while writing $label")
+            }
+            transfered = connection.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
             if (transfered == 0) {
                 Logger.e(Constants.TAG, "bulkTransfer write $label zero length (NAK but no error, retry immediately)")
+                if (++zeroCount >= MAX_ZERO_LENGTH_TRANSFER) {
+                    // 端点始终没人读：不再在这里空转（会把 CPU 打满、整台车机的 UI 都卡住），
+                    // 返回 0 交给上层按失败处理 → IOException → 重连。
+                    Log.w(Constants.TAG, "bulkTransfer write $label still zero after $zeroCount tries, give up this round")
+                    return 0
+                }
             }
         }
         if (transfered < 0) {
@@ -146,7 +168,11 @@ class UsbAccessoryCommunicator(
             var attempt = 0
             while (attempt < AOA_BULK_TRANSFER_RETRY_TIMES) {
                 try { Thread.sleep(AOA_BULK_TRANSFER_RETRY_DELAY_MS) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
-                val retry = usbConnection!!.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
+                val retryConnection = usbConnection
+                if (isTerminated.get() || retryConnection == null) {
+                    throw IOException("UsbAccessoryCommunicator terminated while writing $label")
+                }
+                val retry = retryConnection.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
                 Log.w(Constants.TAG, "bulkTransfer write $label retry #$attempt ret=$retry (was=$transfered)")
                 if (retry > 0) {
                     return retry
@@ -206,17 +232,38 @@ class UsbAccessoryCommunicator(
     private fun bulkTransferReadWithRetry(endpoint: android.hardware.usb.UsbEndpoint,
                                           buffer: ByteArray, length: Int, label: String): Int {
         var transfered = 0
+        var zeroCount = 0
         while (transfered == 0) {
-            transfered = usbConnection!!.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
+            val connection = usbConnection
+            if (isTerminated.get() || connection == null) {
+                throw IOException("UsbAccessoryCommunicator terminated while reading $label")
+            }
+            transfered = connection.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
             if (transfered == 0) {
                 Logger.e(Constants.TAG, "bulkTransfer read $label zero length (NAK, retry immediately)")
+                // NAK 表示"暂时没数据"，正常情况几毫秒后就有；但如果连接已经废了
+                // （手机没起来 / 端点没被监听）这里会变成 while(true) 空转 + CPU 打满，
+                // 所以给一个上限，超了就按"读不到"返回，让上层抛出 IOException 后重连。
+                if (++zeroCount >= MAX_ZERO_LENGTH_TRANSFER) {
+                    Log.w(Constants.TAG, "bulkTransfer read $label still zero after $zeroCount tries, give up this round")
+                    return 0
+                }
+                // 少量 NAK 是正常轮询（每次 bulkTransfer 本身会阻塞到超时才返回），
+                // 累计到一定次数后歇一下，避免满载空转。
+                if (zeroCount % 20 == 0) {
+                    try { Thread.sleep(20) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
+                }
             }
         }
         if (transfered < 0) {
             var attempt = 0
             while (attempt < AOA_BULK_TRANSFER_RETRY_TIMES) {
                 try { Thread.sleep(AOA_BULK_TRANSFER_RETRY_DELAY_MS) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
-                val retry = usbConnection!!.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
+                val retryConnection = usbConnection
+                if (isTerminated.get() || retryConnection == null) {
+                    throw IOException("UsbAccessoryCommunicator terminated while reading $label")
+                }
+                val retry = retryConnection.bulkTransfer(endpoint, buffer, 0, length, AOA_BULK_TRANSFER_TIMEOUT_MS)
                 Log.w(Constants.TAG, "bulkTransfer read $label retry #$attempt ret=$retry (was=$transfered)")
                 if (retry > 0) {
                     return retry

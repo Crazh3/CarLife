@@ -68,6 +68,18 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
         // key = vid:pid:serial，value = 上次强制注册的时间戳
         private val forceReInitTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
+        /**
+         * controlTransfer 超时（毫秒）。
+         *
+         * 原来是 0（无限等待）。端点 NAK / STALL 时虽有 libusb 自己的超时兜底，
+         * 但在部分车机 + 手机组合上（锁屏、USB 配置没切、别的 AOA 客户端占着）
+         * 这一发会**永久挂住**：调用线程再也出不来，后面的 USB 事件
+         * （切 AOA 后的重枚举）全都排不上队，授权流程卡在半路 ——
+         * 表现就是"点了第一个授权框之后再没动静，只能重启 App"。
+         * 改成有限超时后，失败会正常返回负值交给上层重试。
+         */
+        private const val CONTROL_TRANSFER_TIMEOUT_MS = 3000
+
         fun resetForceReInitState() {
             forceReInitTimes.clear()
         }
@@ -197,7 +209,7 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
             index,
             buffer,
             length,
-            0)
+            CONTROL_TRANSFER_TIMEOUT_MS)
     }
 
     private fun controlTransferOut(request: Int, value: Int, index: Int,
@@ -210,6 +222,6 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
             index,
             buffer,
             length,
-            0)
+            CONTROL_TRANSFER_TIMEOUT_MS)
     }
 }

@@ -23,6 +23,9 @@ import com.baidu.carlifevehicle.R
  * AUDIO_TTS_CHANNEL         导航：同上
  * ```
  *
+ * 其中导航这一组的**出厂默认值**被改成了「旧版 + 通道 14」（见 [NAVI_DEFAULT_CHANNEL]），
+ * 不是官方默认的 3 / 12 —— 车机上导航播报要走这一路才对。
+ *
  * 前两项设置只在「音频传输通道 = 互联通道」时才有意义（蓝牙通道时音频由手机直接
  * 走蓝牙播放，车机不接管），设置页对这两项会置灰，见 [channelSettingsEnabled]。
  *
@@ -95,14 +98,26 @@ object AudioChannelPrefs {
 
     // ---------------- 导航音频通道 ----------------
 
+    /**
+     * 导航音频通道的**出厂默认值**：旧版接口（[AudioChannelConfig] 里 legacy=true）+ 通道值 14。
+     *
+     * 车机上导航播报要落到方向盘/仪表的那一路音源，实测 14 才是有效值，
+     * 所以这里不再沿用官方默认（旧版 STREAM_MUSIC(3) / 新版 USAGE_NAVIGATION(12)）。
+     *
+     * 注意：14 不在官方的 0~23 名称对照表里（见 [CHANNELS]），
+     * 设置页会显示成「14通道」，这是正常的 —— 官方也是"解释不了就显示 N通道"。
+     */
+    private const val NAVI_DEFAULT_LEGACY_API = true
+    private const val NAVI_DEFAULT_CHANNEL = 14
+
     fun naviRequestFocus(context: Context): Boolean =
         prefs(context).getBoolean(KEY_TTS_REQUEST_FOCUS, true)
 
     fun naviLegacyApi(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_TTS_LEGACY_API, AudioChannelConfig.DEFAULT_LEGACY_API)
+        prefs(context).getBoolean(KEY_TTS_LEGACY_API, NAVI_DEFAULT_LEGACY_API)
 
     fun naviChannel(context: Context): Int =
-        prefs(context).getInt(KEY_TTS_CHANNEL, AudioChannelConfig.defaultNaviChannel(naviLegacyApi(context)))
+        prefs(context).getInt(KEY_TTS_CHANNEL, NAVI_DEFAULT_CHANNEL)
 
     fun setNavi(context: Context, requestFocus: Boolean, legacyApi: Boolean, channel: Int) {
         prefs(context).edit()
