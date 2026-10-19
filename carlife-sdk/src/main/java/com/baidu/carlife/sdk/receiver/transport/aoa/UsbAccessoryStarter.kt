@@ -125,11 +125,22 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
             return true
         }
 
+        // 还没进 AOA：GET_PROTOCOL → SEND_IDENT → START_ACCESSORY，
+        // 之后手机会**重新枚举**成 AOA 设备（VID=0x18D1 / PID=0x2D0x），
+        // 当前这个 usbConnection 随即失效，所以这里**必须**返回 false，
+        // 让调用方（UsbAccessoryCommunicator）释放连接、等重枚举后的新设备。
+        // 重枚举后的新 VID/PID 需要**第二次系统授权弹窗**，由 UsbAccessoryScanner 负责请求。
+        var switched = false
         if (getProtocolVersion()) {
             if (sendIdentities()) {
-                startAccessory()
+                switched = startAccessory()
             }
         }
+        Log.w(
+            Constants.TAG,
+            "UsbAccessoryStarter switch to AOA ret=$switched (waiting for re-enumeration, " +
+                    "2nd permission dialog needed)"
+        )
         return false
 
     }

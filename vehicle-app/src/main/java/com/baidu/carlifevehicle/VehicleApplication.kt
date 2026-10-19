@@ -24,6 +24,7 @@ import com.baidu.carlifevehicle.util.CarlifeConfUtil
 import com.baidu.carlifevehicle.util.CommonParams.CONNECT_TYPE_SHARED_PREFERENCES
 import com.baidu.carlife.sdk.receiver.transport.aoa.UsbAccessoryStarter
 import com.baidu.carlifevehicle.util.AudioChannelPrefs
+import com.baidu.carlifevehicle.util.AutoStartPrefs
 import com.baidu.carlifevehicle.util.ConnectTypePrefs
 import com.baidu.carlifevehicle.util.DisplaySpecConfig
 import com.baidu.carlifevehicle.util.PreferenceUtil
@@ -53,6 +54,8 @@ class VehicleApplication : Application() {
         // 保证进程启动后组件状态与设置一致（覆盖安装/升级后也以设置里的值为准）。
         ConnectTypePrefs.applyUsbAutoLaunch(this, ConnectTypePrefs.isUsbAutoLaunch(this))
         ConnectTypePrefs.applyRememberGrant(this, ConnectTypePrefs.isRememberGrant(this))
+        // 「开机启动」同理落到组件状态：关 → BootReceiver 禁用，车机开机不会唤醒本应用
+        AutoStartPrefs.apply(this)
         // 进程启动时清掉"已强制 AOA_START_ACCESSORY 重注册身份"的时间记录，
         // 这样本次 App 启动对每个手机都会做一次强制重注册（修复手机端 CarLife app
         // 没监听 AOA bulk 端点的问题）。详见 UsbAccessoryStarter.forceReInitTimes。
@@ -90,6 +93,13 @@ class VehicleApplication : Application() {
             .getInt(CONNECT_TYPE_SHARED_PREFERENCES, CarLifeContext.CONNECTION_TYPE_AOA)
 
         /**
+         * 音频传输通道（设置页「音频传输通道」：互联通道 / 蓝牙通道，默认互联通道）。
+         * 作为 FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE 下发给手机端；改设置后需要
+         * 重新连接手机才生效（原实现这里写死 1=蓝牙，与设置页的默认值不一致）。
+         */
+        val audioTransmissionMode = AudioChannelPrefs.transmissionMode(this)
+
+        /**
          * 车机端的支持的Feature，会通过协议传给手机端
          */
         val features = mapOf(
@@ -97,8 +107,12 @@ class VehicleApplication : Application() {
             FEATURE_CONFIG_I_FRAME_INTERVAL to 300,
             FEATURE_CONFIG_CONNECT_TYPE to type,
             FEATURE_CONFIG_AAC_SUPPORT to 1,
-            FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE to 1,
+            FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE to audioTransmissionMode,
             FEATURE_CONFIG_MUSIC_HUD to 1
+        )
+        Log.d(
+            Constants.TAG,
+            "VehicleApplication features: audio transmission mode=$audioTransmissionMode (0=carlife 1=bluetooth)"
         )
 
         /**

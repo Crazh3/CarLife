@@ -255,4 +255,10 @@
     <string name="theme_sync_switch">深浅色同步给手机</string>
     <string name="theme_sync_hint">开启后，手机端会跟随车机的深色/浅色主题；关闭后手机端保持自己的主题设置。</string>
     <!-- 主题同步 -END -->
+
+    <!-- 开机启动 -START -->
+    <string name="auto_start_title">开机启动</string>
+    <string name="auto_start_switch">开机自动启动 CarLife</string>
+    <string name="auto_start_hint">开启后，车机开机（或重启）完成会自动打开 CarLife 主界面；关闭后需要手动打开。若没生效，请检查车机「自启动管理 / 开机自启」是否已允许本应用。</string>
+    <!-- 开机启动 -END -->
 </resources>

@@ -19,6 +19,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".VehicleApplication"
@@ -90,6 +91,26 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
         </activity-alias>
+
+        <!--
+          ===== 设置项「开机启动」的载体（见 util/AutoStartPrefs）=====
+          默认 android:enabled="false"，与「记住授权 / USB拉起APP」同一套做法：
+            开机启动 = 开 → 组件启用 → 车机开机完成（ACTION_BOOT_COMPLETED）时拉起主界面；
+            开机启动 = 关 → 组件禁用 → 系统不会在开机时唤醒本应用。
+          App 启动时由 AutoStartPrefs.apply 按设置同步，设置页改完立即生效（无需重启车机）。
+        -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <!-- 部分 MTK 车机的"快速开机"广播 -->
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".SettingsActivity"

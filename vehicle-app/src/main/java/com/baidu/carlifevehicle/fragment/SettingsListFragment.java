@@ -34,6 +34,8 @@ import com.baidu.carlifevehicle.R;
 import com.baidu.carlifevehicle.util.AudioChannelDialog;
 import com.baidu.carlifevehicle.util.AudioChannelPrefs;
 import com.baidu.carlifevehicle.util.AudioTransmissionDialog;
+import com.baidu.carlifevehicle.util.AutoStartDialog;
+import com.baidu.carlifevehicle.util.AutoStartPrefs;
 import com.baidu.carlifevehicle.util.ConnectTypeDialog;
 import com.baidu.carlifevehicle.util.ConnectTypePrefs;
 import com.baidu.carlifevehicle.util.DisplayModeDialog;
@@ -54,6 +56,7 @@ import java.util.List;
  *  - 音频传输通道：互联通道 / 蓝牙通道（见 {@link AudioTransmissionDialog}）
  *  - 媒体 / 导航音频通道：**仅当音频走「互联通道」时出现**（见 {@link AudioChannelDialog}）
  *  - 主题同步：把车机深浅色同步给手机端（见 {@link ThemeSyncDialog}）
+ *  - 开机启动：车机开机后自动打开 CarLife 主界面（见 {@link AutoStartDialog}）
  */
 public class SettingsListFragment extends BaseFragment {
 
@@ -68,6 +71,7 @@ public class SettingsListFragment extends BaseFragment {
     private static final int ITEM_AUDIO_MEDIA_CHANNEL = 4;
     private static final int ITEM_AUDIO_NAVI_CHANNEL = 5;
     private static final int ITEM_THEME_SYNC = 6;
+    private static final int ITEM_AUTO_START = 7;
 
     /** 当前可见的条目（顺序即列表顺序，由 refreshItems 决定） */
     private final List<Integer> mVisibleItems = new ArrayList<>();
@@ -146,6 +150,7 @@ public class SettingsListFragment extends BaseFragment {
             mVisibleItems.add(ITEM_AUDIO_NAVI_CHANNEL);
         }
         mVisibleItems.add(ITEM_THEME_SYNC);
+        mVisibleItems.add(ITEM_AUTO_START);
         if (mAdapter != null) {
             mAdapter.notifyDataSetChanged();
         }
@@ -173,6 +178,7 @@ public class SettingsListFragment extends BaseFragment {
             case ITEM_AUDIO_MEDIA_CHANNEL:
             case ITEM_AUDIO_NAVI_CHANNEL:
             case ITEM_THEME_SYNC:
+            case ITEM_AUTO_START:
                 showSettingsDialog(mVisibleItems.get(position));
                 break;
             default:
@@ -180,7 +186,7 @@ public class SettingsListFragment extends BaseFragment {
         }
     }
 
-    /** 需要弹窗的条目：显示方式 / 音频传输通道 / 媒体·导航音频通道 / 主题同步 */
+    /** 需要弹窗的条目：显示方式 / 音频传输通道 / 媒体·导航音频通道 / 主题同步 / 开机启动 */
     private void showSettingsDialog(int item) {
         if (!(mActivity instanceof AppCompatActivity)) {
             Logger.e(TAG, "activity is not AppCompatActivity, can not show dialog");
@@ -208,6 +214,9 @@ public class SettingsListFragment extends BaseFragment {
                 break;
             case ITEM_THEME_SYNC:
                 ThemeSyncDialog.INSTANCE.show(activity, onChanged);
+                break;
+            case ITEM_AUTO_START:
+                AutoStartDialog.INSTANCE.show(activity, onChanged);
                 break;
             default:
                 break;
@@ -289,6 +298,13 @@ public class SettingsListFragment extends BaseFragment {
                 case ITEM_THEME_SYNC:
                     holder.title.setText(R.string.theme_sync_title);
                     holder.value.setText(ThemeSyncPrefs.INSTANCE.isEnabled(mActivity)
+                            ? R.string.connect_type_remember_on
+                            : R.string.connect_type_remember_off);
+                    holder.more.setVisibility(View.VISIBLE);
+                    break;
+                case ITEM_AUTO_START:
+                    holder.title.setText(R.string.auto_start_title);
+                    holder.value.setText(AutoStartPrefs.INSTANCE.isEnabled(mActivity)
                             ? R.string.connect_type_remember_on
                             : R.string.connect_type_remember_off);
                     holder.more.setVisibility(View.VISIBLE);

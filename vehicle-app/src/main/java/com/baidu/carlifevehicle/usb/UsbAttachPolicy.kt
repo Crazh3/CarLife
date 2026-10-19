@@ -53,7 +53,11 @@ object UsbAttachPolicy {
         return ignored
     }
 
-    private fun isNonPhoneDevice(device: UsbDevice): Boolean {
+    /**
+     * 该设备是否"非手机类"（U 盘 / HID），判定标准见类注释。
+     * 对外暴露：主页判断"是否还在等 USB 授权"时要排除这类设备，见 MainFragment。
+     */
+    fun isNonPhoneDevice(device: UsbDevice): Boolean {
         val interfaceCount = device.interfaceCount
         // 拿不到接口信息时不做拦截，交给 SDK 判断，避免误杀手机
         if (interfaceCount <= 0) return false

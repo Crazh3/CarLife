@@ -15,6 +15,9 @@
  *****************************************************************************/
 package com.baidu.carlifevehicle.fragment;
 
+import android.content.Context;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Message;
 import android.text.TextUtils;
@@ -40,6 +43,7 @@ import com.baidu.carlifevehicle.message.MsgHandlerCenter;
 import com.baidu.carlifevehicle.util.CommonParams;
 import com.baidu.carlifevehicle.util.ConnectTypePrefs;
 import com.baidu.carlifevehicle.util.ServiceSwitchPrefs;
+import com.baidu.carlifevehicle.usb.UsbAttachPolicy;
 import com.baidu.carlifevehicle.view.LoadingProgressBar;
 
 import java.util.Timer;
@@ -47,6 +51,9 @@ import java.util.TimerTask;
 
 public class MainFragment extends BaseFragment implements OnClickListener {
     private static final String TAG = "MainFragment";
+
+    /** iPhone 的 VID：SDK 不会为它申请 USB 权限（走的是其它通道），不算"在等授权" */
+    private static final int VID_IPHONE = 0x05AC;
     private ImageView mImgView = null;
     private LoadingProgressBar mConnectProgress = null;
     private TextView mConnectInfo = null;
@@ -374,10 +381,49 @@ public class MainFragment extends BaseFragment implements OnClickListener {
     private Runnable mConnectionTask = new Runnable() {
         @Override
         public void run() {
+            // 首次连接要弹两次系统授权框（手机普通模式一次、切到 AOA 后新 VID/PID 再一次），
+            // 用户点完通常要十几秒，远超默认超时（10s）。还在等 USB 授权时不报超时，
+            // 否则界面会在授权途中闪"连接超时"，而底层其实还在正常推进。
+            if (isWaitingUsbPermission()) {
+                Logger.d(TAG, "waiting for USB permission, skip connect timeout");
+                return;
+            }
             Logger.e(TAG, "Carlife Connect Timeout");
             MsgHandlerCenter.dispatchMessage(CommonParams.MSG_CONNECT_FAIL_TIMEOUT);
         }
     };
+
+    /**
+     * 当前是否存在"已插上但还没授权"的手机类 USB 设备。
+     * 只判断非手机类（U 盘/鼠标）之外的设备，见 {@link UsbAttachPolicy}。
+     */
+    private boolean isWaitingUsbPermission() {
+        if (mActivity == null) {
+            return false;
+        }
+        try {
+            UsbManager usbManager = (UsbManager) mActivity.getSystemService(Context.USB_SERVICE);
+            if (usbManager == null) {
+                return false;
+            }
+            for (UsbDevice device : usbManager.getDeviceList().values()) {
+                if (usbManager.hasPermission(device)) {
+                    continue;
+                }
+                // iPhone（SDK 侧不会为它申请权限）与非手机类设备都不算"在等授权"
+                if (device.getVendorId() == VID_IPHONE
+                        || UsbAttachPolicy.INSTANCE.isNonPhoneDevice(device)) {
+                    continue;
+                }
+                Logger.d(TAG, "usb device without permission: vid=" + device.getVendorId()
+                        + " pid=" + device.getProductId());
+                return true;
+            }
+        } catch (Exception e) {
+            Logger.e(TAG, "check usb permission failed: ", e);
+        }
+        return false;
+    }
 
     private Runnable mProtocolInteractionTask = new Runnable() {
         @Override

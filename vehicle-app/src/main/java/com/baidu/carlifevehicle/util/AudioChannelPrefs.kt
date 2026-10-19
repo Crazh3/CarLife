@@ -53,12 +53,15 @@ object AudioChannelPrefs {
     /**
      * 音频传输通道。
      *
-     * 默认「蓝牙通道」：与本项目原有行为一致（原 features 里就写死
-     * `FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE = 1`，即蓝牙），避免新增设置项
-     * 直接改变现网音频走法。
+     * 默认「互联通道」（[TRANSMISSION_CARLIFE]）：音频经 CarLife 通道传给车机播放，
+     * 车机侧才能接管媒体 / 导航音频（也才会用到下面的媒体/导航音频通道设置）。
+     * 该值同时作为 `FEATURE_CONFIG_AUDIO_TRANSMISSION_MODE` 下发给手机端
+     * （见 VehicleApplication.initReceiver 的 features），需要重新连接手机后生效。
+     *
+     * 注意：默认值只在首次安装（或清除应用数据）时生效，之后读到的是用户上次的选择。
      */
     fun transmissionMode(context: Context): Int =
-        prefs(context).getInt(KEY_TRANSMISSION_MODE, TRANSMISSION_BLUETOOTH)
+        prefs(context).getInt(KEY_TRANSMISSION_MODE, TRANSMISSION_CARLIFE)
 
     fun setTransmissionMode(context: Context, mode: Int) {
         prefs(context).edit().putInt(KEY_TRANSMISSION_MODE, mode).apply()

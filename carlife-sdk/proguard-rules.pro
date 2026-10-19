@@ -28,6 +28,12 @@
 
 -keep class com.baidu.carlife.sdk.sender.aidl.* { *; }
 -keep class com.baidu.carlife.sdk.sender.aidl.*$* { *; }
+
+# AOA/USB 相关类会被车机端 App 直接调用（如 UsbAccessoryStarter.resetForceReInitState），
+# SDK 内部无引用时会被 R8 当作无用类剥离，导致 :vehicle-app:minifyReleaseWithR8 报
+# "Missing class com.baidu.carlife.sdk.receiver.transport.aoa.UsbAccessoryStarter"，这里保留
+-keep class com.baidu.carlife.sdk.receiver.transport.aoa.* { *; }
+-keep class com.baidu.carlife.sdk.receiver.transport.aoa.*$* { *; }
 -keep class com.baidu.carlife.sdk.util.* { *; }
 -keep class com.baidu.carlife.sdk.util.**.* { *; }
 
