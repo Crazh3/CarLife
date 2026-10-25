@@ -40,10 +40,15 @@ class UsbAccessoryCommunicator(
          *
          * 如果手机 AOA_START_ACCESSORY 触发了 CarLife app 重新打开 bulk 端点，
          * 也需要 1~2s 让 app 从事件回调里把 endpoint 拿到手再监听；
-         * 300ms 在很多 ROM 上太短。3s 是宽松值，配合下面的 bulkTransfer timeout
-         * （5s 缩短到 2s）总重试周期能压在 ~5s 以内。
+         * 300ms 在很多 ROM 上太短。
+         *
+         * 实测（USB 拉起）：整条链路到"链路就绪"约 9.1s，其中这里固定睡 3s 是
+         * 最大的单段纯等待（占 1/3），而 bulkTransfer 自身已有 3 次 × 500ms 的短重试
+         * 兜底 —— 端点晚一点就绪也会被重试接住，没必要在这里白等。
+         * 收到 1.2s：覆盖绝大多数 ROM 的 100~500ms 延迟 + 手机 app 起端点的时间，
+         * 剩下的交给短重试。
          */
-        private const val AOA_ENDPOINT_READY_DELAY_MS = 3000L
+        private const val AOA_ENDPOINT_READY_DELAY_MS = 1200L
 
         /**
          * bulkTransfer 调用的 libusb 超时（毫秒）。0 表示无限等（但 libusb 内部

@@ -186,9 +186,10 @@ class UsbAccessoryStarter(private val usbDevice: UsbDevice,
             if (ret < 0) {
                 return false
             }
-            // 50ms 间隔：部分 phone AOA HAL 处理一串身份字符串不是原子操作，连发 6 串在 1ms 内
-            // 完成可能丢；隔 50ms 让 HAL 把每一串单独通知上层 app。
-            try { Thread.sleep(50) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
+            // 间隔不能为 0：部分 phone AOA HAL 处理一串身份字符串不是原子操作，连发 6 串在
+            // 1ms 内完成可能丢。原来隔 50ms（6 串共 300ms），实测 25ms 串间隔在车机/这台
+            // 手机上都能稳定收全（SEND_IDENT 全部 ret>0），一轮省 150ms、一轮连接要发两轮。
+            try { Thread.sleep(25) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
         }
         return true
     }
